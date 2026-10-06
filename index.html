@@ -285,21 +285,28 @@
 
     <div class="card stack">
       <div>
-        <div class="label">1 · De unde s-a aruncat</div>
+        <div class="label">1 · Cine aruncă</div>
+        <div class="chips" id="mRoster" style="margin-top:8px"></div>
+        <form class="row" id="mAddPlayer" style="margin-top:8px">
+          <input type="text" id="mNewName" list="playerNames" placeholder="Nume (ex: Mircea)" maxlength="40" autocomplete="off" style="flex:2 1 130px">
+          <select id="mNewPost" style="flex:1 1 130px"></select>
+          <button class="btn" type="submit" style="flex:0 0 auto">＋ Adaugă</button>
+        </form>
+        <datalist id="playerNames"></datalist>
+      </div>
+      <div>
+        <div class="label">2 · De unde a aruncat</div>
         <div class="chips" id="mPosts" style="margin-top:8px"></div>
       </div>
       <div>
-        <div class="label">Jucătorul (opțional)</div>
-        <select id="mPlayer" style="margin-top:8px"></select>
-      </div>
-      <div>
         <div class="row" style="align-items:center;justify-content:space-between">
-          <div class="label" style="flex:1 1 auto">2 · Unde a mers mingea</div>
+          <div class="label" style="flex:1 1 auto">3 · Unde a mers mingea</div>
           <div class="seg" style="flex:none" id="mMode">
             <button data-mode="shots" aria-pressed="true">Șuturi</button>
             <button data-mode="goals" aria-pressed="false">Goluri</button>
           </div>
         </div>
+        <div class="muted" id="mGoalWho" style="margin-top:4px"></div>
         <div style="margin-top:8px">
           <div class="goal" id="mGoal"></div>
           <div class="floor"></div>
@@ -786,14 +793,34 @@ function renderMatch() {
     chips.appendChild(b);
   });
 
-  const sel = $("mPlayer");
-  sel.innerHTML = `<option value="">— nu contează —</option>` +
-    sortedPlayers().map(pl => `<option value="${pl.id}">${esc(pl.name)} (${POSTS[pl.post]})</option>`).join("");
-  sel.value = state.players[mPlayer] ? mPlayer : "";
+  // jucătorii din meci
+  if (mPlayer && !state.players[mPlayer]) mPlayer = "";
+  const roster = $("mRoster");
+  roster.innerHTML = "";
+  const addChip = (id, text) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = text;
+    b.setAttribute("aria-pressed", id === mPlayer);
+    b.addEventListener("click", () => selectMatchPlayer(id));
+    roster.appendChild(b);
+  };
+  addChip("", "Fără nume");
+  matchRoster(m).forEach(pl => {
+    const n = shots.filter(s => s.pl === pl.id).length;
+    addChip(pl.id, `${pl.name} · ${n}`);
+  });
+  $("playerNames").innerHTML = sortedPlayers().map(pl => `<option value="${esc(pl.name)}"></option>`).join("");
+
+  // poarta: doar șuturile jucătorului ales, sau toate
+  const vis = mPlayer ? shots.filter(s => s.pl === mPlayer) : shots;
+  $("mGoalWho").innerHTML = mPlayer
+    ? `Poarta lui <strong>${esc(state.players[mPlayer].name)}</strong> în meciul ăsta: ${vis.length} ${vis.length === 1 ? "șut" : "șuturi"}`
+    : `Toate șuturile din meci`;
 
   document.querySelectorAll("#mMode button").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === mMode));
-  const all = counts(shots.map(s => s.z));
-  const gz = counts(shots.filter(s => !s.r).map(s => s.z));
+  const all = counts(vis.map(s => s.z));
+  const gz = counts(vis.filter(s => !s.r).map(s => s.z));
   drawGoal($("mGoal"), mMode === "shots" ? all : gz, {
     selected: mSelZone,
     ping: mPing,
@@ -810,11 +837,44 @@ function renderMatch() {
   $("mReport").innerHTML = analyzeMatch(m);
 }
 
-$("mPlayer").addEventListener("change", e => {
-  mPlayer = e.target.value;
-  const pl = state.players[mPlayer];
+// Jucătorii unui meci: cei adăugați în meci și cei care au șuturi în el
+function matchRoster(m) {
+  const ids = [...(m.roster || [])];
+  m.shots.forEach(s => { if (s.pl && !ids.includes(s.pl)) ids.push(s.pl); });
+  return ids.map(id => state.players[id]).filter(Boolean);
+}
+
+function selectMatchPlayer(id) {
+  mPlayer = id;
+  const pl = state.players[id];
   if (pl) mPost = pl.post;
+  mSelZone = null;
   renderMatch();
+}
+
+$("mAddPlayer").addEventListener("submit", e => {
+  e.preventDefault();
+  const m = state.matches[view.id];
+  const name = $("mNewName").value.trim();
+  if (!m) return;
+  if (!name) { $("mNewName").focus(); toast("Scrie numele jucătorului"); return; }
+  // dacă jucătorul există deja (același nume), îl folosim pe el
+  let pl = Object.values(state.players).find(p => p.name.toLocaleLowerCase("ro") === name.toLocaleLowerCase("ro"));
+  if (!pl) {
+    const id = newId("p");
+    pl = state.players[id] = { id, name, post: $("mNewPost").value, shots: [], created: Date.now() };
+    persist("players", id);
+  }
+  m.roster = m.roster || [];
+  if (!m.roster.includes(pl.id)) { m.roster.push(pl.id); persist("matches", m.id); }
+  $("mNewName").value = "";
+  toast(`${pl.name} e în meci`);
+  selectMatchPlayer(pl.id);
+});
+// când alegi un nume existent din listă, postul se completează singur
+$("mNewName").addEventListener("input", e => {
+  const pl = Object.values(state.players).find(p => p.name.toLocaleLowerCase("ro") === e.target.value.trim().toLocaleLowerCase("ro"));
+  if (pl) $("mNewPost").value = pl.post;
 });
 document.querySelectorAll("#mMode button").forEach(b => b.addEventListener("click", () => { mMode = b.dataset.mode; renderMatch(); }));
 
@@ -904,6 +964,24 @@ function analyzeMatch(m) {
     if (v.cls !== "good") tip += "Sfat: " + POST_ADVICE[g.k].tips[0];
     return `<li class="${v.cls}">${line}${tip ? `<span class="tip">${tip}</span>` : ""}</li>`;
   }).join("") + `</ul>`;
+
+  // pe jucători
+  const named = matchRoster(m).map(pl => {
+    const list = shots.filter(s => s.pl === pl.id);
+    const sv = list.filter(s => s.r).length;
+    return { pl, list, n: list.length, sv, g: list.length - sv, p: pct(sv, list.length) };
+  }).filter(x => x.n > 0).sort((a, b) => b.g - a.g || b.n - a.n);
+  if (named.length) {
+    html += `<div class="label">Pe jucători</div><ul class="report">` + named.map(x => {
+      const c = counts(x.list.map(s => s.z));
+      const max = Math.max(...c);
+      const fav = x.n >= 2 && max >= 2 ? ` Aruncă cel mai des ${zoneName(c.indexOf(max))} (${max} din ${x.n}).` : "";
+      const cls = x.n < 3 ? "" : pctClass(x.p);
+      return `<li class="${cls}"><div style="display:flex;gap:10px;align-items:center">${miniGoal(x.list.map(s => s.z))}
+        <div style="min-width:0"><strong>${esc(x.pl.name)}</strong> <span class="muted">(${POSTS[x.pl.post]})</span><br>
+        ${x.n} ${x.n === 1 ? "șut" : "șuturi"}, ai apărat ${x.sv} și ai luat ${x.g} ${x.g === 1 ? "gol" : "goluri"} (${x.p}%).${fav}</div></div></li>`;
+    }).join("") + `</ul>`;
+  }
 
   const judged = groups.filter(g => g.n >= 3);
   const notes = [];
@@ -1047,7 +1125,7 @@ armConfirm($("pDelete"), "Apasă din nou ca să ștergi", () => {
 });
 
 // ---------- Start ----------
-for (const sel of [$("newPost"), $("pPost")]) {
+for (const sel of [$("newPost"), $("pPost"), $("mNewPost")]) {
   sel.innerHTML = Object.entries(POSTS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
 }
 render();
