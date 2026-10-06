@@ -490,11 +490,9 @@ function renderAdvice(p) {
     // Stânga / dreapta (din perspectiva portarului); la extreme se ocupă sfatul de colț lung/scurt
     const gkRight = c[0] + c[3] + c[6], gkLeft = c[2] + c[5] + c[8];
     const wing = p.post.startsWith("extrema");
-    if (wing) {
-      // nimic aici
-    } else if (gkRight / total >= 0.5 && gkRight >= 2 * gkLeft) {
+    if (!wing && gkRight / total >= 0.5 && gkRight >= 2 * gkLeft) {
       extra.push("<strong>Aruncă mai ales în partea ta dreaptă.</strong> Mută-te cu o jumătate de pas spre dreapta. Așa închizi colțul lui preferat și îl obligi să arunce unde îi place mai puțin.");
-    } else if (gkLeft / total >= 0.5 && gkLeft >= 2 * gkRight) {
+    } else if (!wing && gkLeft / total >= 0.5 && gkLeft >= 2 * gkRight) {
       extra.push("<strong>Aruncă mai ales în partea ta stângă.</strong> Mută-te cu o jumătate de pas spre stânga. Așa închizi colțul lui preferat și îl obligi să arunce unde îi place mai puțin.");
     }
 
