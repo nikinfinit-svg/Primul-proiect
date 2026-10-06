@@ -1,198 +1,378 @@
-<!doctype html>
-<html lang="ro">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Portar Handbal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap">
 <style>
+  /* Layout: o singură coloană de aplicație (max 560px); tabela de scor sus, poarta electronică în centru. */
   :root {
-    --bg: #f2f4f7;
-    --card: #ffffff;
-    --text: #18202a;
-    --muted: #6b7684;
-    --line: #dde2e8;
-    --accent: #1f6feb;
-    --red: #ff3b30;
-    --yellow: #ffcc00;
-    --green: #34c759;
+    --bg: #eef2f6;
+    --surface: #ffffff;
+    --fg: #121a24;
+    --muted: #5f6b7a;
+    --line: #d6dde6;
+    --accent: #0b63ce;
+    --accent-fg: #ffffff;
+    --hot: #ff3b30;
+    --warm: #ffc400;
+    --cool: #2fbf5b;
+    --panel: #070b10;
+    --panel-cell: #121a23;
+    --panel-line: #1f2a37;
+    --panel-text: #5d6c7d;
+    --post-a: #d63a2f;
+    --post-b: #f3f3f3;
+    --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+    --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
   @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0d1117;
-      --card: #161b22;
-      --text: #e6edf3;
-      --muted: #8b949e;
-      --line: #2a313b;
-      --accent: #4c8dff;
+    :root:not([data-theme="light"]) {
+      --bg: #0b0f14;
+      --surface: #141b23;
+      --fg: #e7edf3;
+      --muted: #91a0b0;
+      --line: #263140;
+      --accent: #4d94ff;
+      --accent-fg: #06111f;
+      color-scheme: dark;
     }
   }
+  :root[data-theme="dark"] {
+    --bg: #0b0f14;
+    --surface: #141b23;
+    --fg: #e7edf3;
+    --muted: #91a0b0;
+    --line: #263140;
+    --accent: #4d94ff;
+    --accent-fg: #06111f;
+    color-scheme: dark;
+  }
+
   * { box-sizing: border-box; }
-  html, body { margin: 0; }
   body {
-    background: var(--bg); color: var(--text);
-    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    background: var(--bg); color: var(--fg);
+    font: 16px/1.45 var(--font-body);
     -webkit-tap-highlight-color: transparent;
   }
-  .wrap { max-width: 560px; margin: 0 auto; padding: 16px 16px 40px; }
-  h1 { margin: 0; font-size: 1.4rem; }
-  h2 { margin: 0 0 8px; font-size: 1.05rem; }
-  .muted { color: var(--muted); font-size: .9rem; }
   [hidden] { display: none !important; }
-  button { font: inherit; cursor: pointer; }
+  .wrap { max-width: 560px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 48px; }
+  h1, h2, .display { font-family: var(--font-display); letter-spacing: .01em; text-wrap: balance; }
+  h1 { margin: 0; font-size: 1.9rem; font-weight: 800; line-height: 1.05; }
+  h2 { margin: 0 0 10px; font-size: 1.25rem; font-weight: 700; }
+  .muted { color: var(--muted); font-size: .92rem; }
+  .label { font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  button { font: inherit; cursor: pointer; color: inherit; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-top: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .stack { display: flex; flex-direction: column; gap: 12px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row > * { flex: 1 1 0; min-width: 0; }
+
   .btn {
     padding: 11px 14px; border-radius: 10px; border: 1px solid var(--line);
-    background: var(--card); color: var(--text); font-weight: 600;
+    background: var(--surface); color: var(--fg); font-weight: 600;
   }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  .btn.danger { color: var(--hot); }
+  .btn[data-armed] { background: var(--hot); border-color: var(--hot); color: #fff; }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
   input[type=text], select {
     width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--line);
-    background: var(--card); color: var(--text); font: inherit;
+    background: var(--surface); color: var(--fg); font: inherit;
   }
-  .row { display: flex; gap: 8px; margin-top: 10px; }
-  .row > * { flex: 1; }
 
-  /* ---------- Lista de jucători ---------- */
-  .player {
+  /* ---------- Antet + tab-uri ---------- */
+  .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 2px; }
+  .brand svg { flex: none; }
+  .tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+  .tabs button { flex: 1; padding: 10px; border: 0; border-radius: 9px; background: none; font-weight: 700; font-family: var(--font-display); font-size: 1.1rem; letter-spacing: .02em; }
+  .tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-fg); }
+
+  /* ---------- Liste ---------- */
+  .item {
     display: flex; align-items: center; gap: 12px; width: 100%;
     padding: 12px 0; border: 0; border-bottom: 1px solid var(--line);
-    background: none; color: var(--text); text-align: left;
+    background: none; text-align: left;
   }
-  .player:last-child { border-bottom: 0; }
-  .player .info { flex: 1; min-width: 0; }
-  .player .name { font-weight: 700; }
+  .item:last-child { border-bottom: 0; }
+  .item .info { flex: 1; min-width: 0; }
+  .item .name { font-weight: 700; overflow-wrap: anywhere; }
+  .pct-chip {
+    font-family: var(--font-display); font-weight: 800; font-size: 1.25rem; min-width: 64px; text-align: center;
+    padding: 4px 8px; border-radius: 8px; font-variant-numeric: tabular-nums;
+  }
+  .pct-chip.good { background: var(--cool); color: #072611; }
+  .pct-chip.mid  { background: var(--warm); color: #2a2000; }
+  .pct-chip.bad  { background: var(--hot); color: #fff; }
+  .pct-chip.none { background: var(--line); color: var(--muted); }
   .mini {
     flex: none; width: 54px; height: 36px; display: grid;
     grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 3px;
-    background: #05080c; border: 3px solid #d0362f; border-bottom: 0; border-radius: 3px 3px 0 0;
+    background: var(--panel); border: 3px solid var(--post-a); border-bottom: 0; border-radius: 3px 3px 0 0;
   }
-  .mini span { border-radius: 2px; background: #1a222c; }
+  .mini span { border-radius: 2px; background: var(--panel-cell); }
+  .mini .hot { background: var(--hot); }
+  .mini .warm { background: var(--warm); }
+  .mini .cool { background: var(--cool); }
+  .empty { padding: 18px 4px; text-align: center; }
+
+  /* ---------- Tabela de scor ---------- */
+  .topbar { display: flex; align-items: center; gap: 10px; }
+  .topbar .title { flex: 1; min-width: 0; }
+  .topbar .title .display { font-size: 1.5rem; font-weight: 800; line-height: 1.1; overflow-wrap: anywhere; }
+  .scoreboard {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+    background: var(--panel-line); border-radius: 12px; overflow: hidden; border: 1px solid var(--panel-line);
+  }
+  .scoreboard div { background: var(--panel); padding: 10px 4px; text-align: center; }
+  .scoreboard strong {
+    display: block; font-family: var(--font-mono); font-size: 1.6rem; line-height: 1.1;
+    color: #ffd84d; text-shadow: 0 0 10px rgb(255 216 77 / .45); font-variant-numeric: tabular-nums;
+  }
+  .scoreboard span { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: #8796a8; }
+  .scoreboard .s-save strong { color: #4ce07a; text-shadow: 0 0 10px rgb(76 224 122 / .45); }
+  .scoreboard .s-goal strong { color: #ff6359; text-shadow: 0 0 10px rgb(255 99 89 / .45); }
+
+  /* ---------- Chip-uri ---------- */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button {
+    padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--surface); font-size: .92rem; font-weight: 600;
+  }
+  .chips button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .seg button { border: 0; background: none; padding: 6px 12px; font-size: .85rem; font-weight: 600; }
+  .seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
 
   /* ---------- Poarta electronică ---------- */
-  .goal-wrap { margin-top: 12px; }
   .goal {
-    position: relative; aspect-ratio: 3 / 2; width: 100%;
+    aspect-ratio: 3 / 2; width: 100%; max-width: 100%;
     padding: 8px; display: grid; gap: 6px;
     grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
-    background: #05080c;
+    background: var(--panel);
     border: 12px solid; border-bottom: 0;
-    border-image: repeating-linear-gradient(90deg, #d0362f 0 22px, #f4f4f4 22px 44px) 12;
+    border-image: repeating-linear-gradient(90deg, var(--post-a) 0 22px, var(--post-b) 22px 44px) 12;
     box-shadow: inset 0 0 30px #000;
   }
   .goal .cell {
-    border: 1px solid #1f2a36; border-radius: 8px; background: #111820;
-    color: #5d6b7a; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    border: 1px solid var(--panel-line); border-radius: 8px; background: var(--panel-cell);
+    color: var(--panel-text); display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: var(--font-mono); padding: 2px; min-width: 0;
     transition: background .15s, box-shadow .15s, transform .08s;
   }
   .goal .cell:active { transform: scale(.96); }
-  .goal .cell .n { font-size: 1.6rem; font-weight: 800; line-height: 1; }
-  .goal .cell .p { font-size: .75rem; opacity: .85; margin-top: 2px; }
-  .goal .cell.red    { background: var(--red);    color: #fff; box-shadow: 0 0 18px var(--red); }
-  .goal .cell.yellow { background: var(--yellow); color: #1b1b1b; box-shadow: 0 0 16px var(--yellow); }
-  .goal .cell.green  { background: var(--green);  color: #08210f; box-shadow: 0 0 14px var(--green); }
+  .goal .cell .n { font-size: 1.55rem; font-weight: 800; line-height: 1; }
+  .goal .cell .p { font-size: .72rem; opacity: .9; margin-top: 3px; text-align: center; }
+  .goal .cell.hot  { background: var(--hot);  color: #fff;    box-shadow: 0 0 18px var(--hot); }
+  .goal .cell.warm { background: var(--warm); color: #221b00; box-shadow: 0 0 16px var(--warm); }
+  .goal .cell.cool { background: var(--cool); color: #052010; box-shadow: 0 0 14px var(--cool); }
+  .goal .cell.selected { outline: 4px solid #ffffff; outline-offset: -4px; box-shadow: 0 0 0 3px var(--accent), 0 0 22px var(--accent); }
   .goal .cell.ping { animation: ping .35s ease-out; }
   @keyframes ping { from { box-shadow: 0 0 0 0 #fff; } to { box-shadow: 0 0 0 14px transparent; } }
-  .floor { height: 6px; background: #6b7684; border-radius: 0 0 4px 4px; }
-  .sides { display: flex; justify-content: space-between; margin-top: 4px; font-size: .78rem; color: var(--muted); }
-
-  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: .85rem; color: var(--muted); }
+  .floor { height: 6px; background: var(--muted); opacity: .6; border-radius: 0 0 4px 4px; }
+  .sides { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; font-size: .78rem; color: var(--muted); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
   .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
 
-  .topbar { display: flex; align-items: center; gap: 10px; }
-  .topbar .title { flex: 1; min-width: 0; }
-  .total { font-size: 1.8rem; font-weight: 800; text-align: right; line-height: 1; }
-  .total small { display: block; font-size: .75rem; font-weight: 500; color: var(--muted); }
+  .result { display: flex; gap: 10px; }
+  .result button { flex: 1; padding: 18px 10px; font-family: var(--font-display); font-size: 1.4rem; font-weight: 800; letter-spacing: .03em; border-radius: 12px; border: 0; }
+  .result .r-save { background: var(--cool); color: #052010; }
+  .result .r-goal { background: var(--hot); color: #fff; }
+  .result button:disabled { opacity: .35; cursor: not-allowed; }
 
-  .tips { margin: 0; padding-left: 20px; }
-  .tips li { margin-bottom: 8px; }
+  /* ---------- Analiză ---------- */
+  .verdict { padding: 12px 14px; border-radius: 10px; font-weight: 600; }
+  .verdict.good { background: color-mix(in srgb, var(--cool) 22%, transparent); }
+  .verdict.mid  { background: color-mix(in srgb, var(--warm) 25%, transparent); }
+  .verdict.bad  { background: color-mix(in srgb, var(--hot) 20%, transparent); }
+  .report { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .report li { border-left: 5px solid var(--line); padding: 4px 0 4px 12px; }
+  .report li.good { border-color: var(--cool); }
+  .report li.mid { border-color: var(--warm); }
+  .report li.bad { border-color: var(--hot); }
+  .report .tip { display: block; margin-top: 4px; color: var(--muted); font-size: .92rem; }
+  .tips { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
   .stance {
     display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 10px;
-    background: color-mix(in srgb, var(--accent) 12%, transparent); margin-bottom: 12px;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
   }
   .stance svg { flex: none; }
 
   .toast {
-    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
-    background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px;
-    font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none;
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px;
+    font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100% - 32px);
   }
   .toast.show { opacity: .95; }
+  .note { font-size: .82rem; color: var(--muted); text-align: center; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
-</head>
-<body>
+
 <div class="wrap">
 
-  <!-- ===== ECRAN 1: JUCĂTORI ===== -->
-  <section id="screenList">
-    <h1>🧤 Portar Handbal</h1>
-    <div class="muted">Adaugă jucătorii adversari și notează unde aruncă</div>
-
-    <div class="card">
-      <h2>Jucător nou</h2>
-      <input type="text" id="newName" placeholder="Nume (ex: Popescu 7)" maxlength="40">
-      <div class="row">
-        <select id="newPost"></select>
-        <button class="btn primary" id="btnAdd" style="flex:none">＋ Adaugă</button>
+  <!-- ===== ECRAN PRINCIPAL ===== -->
+  <section id="screenHome" class="stack">
+    <div class="brand">
+      <svg width="46" height="34" viewBox="0 0 46 34" aria-hidden="true">
+        <rect x="2" y="2" width="42" height="30" fill="var(--panel)"/>
+        <path d="M2 32V2h42v30" fill="none" stroke="var(--post-a)" stroke-width="4" stroke-dasharray="7 7"/>
+        <rect x="8" y="8" width="9" height="6" rx="1" fill="var(--hot)"/>
+        <rect x="19" y="8" width="9" height="6" rx="1" fill="var(--warm)"/>
+        <rect x="30" y="20" width="9" height="6" rx="1" fill="var(--cool)"/>
+      </svg>
+      <div>
+        <h1>Portar Handbal</h1>
+        <div class="muted">Meciuri, șuturi și cum să stai în poartă</div>
       </div>
     </div>
 
-    <div class="card">
-      <h2>Jucători</h2>
-      <div id="playerList"></div>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="meciuri" aria-selected="true">Meciuri</button>
+      <button role="tab" data-tab="jucatori" aria-selected="false">Jucători</button>
     </div>
+
+    <div id="tabMeciuri" class="stack">
+      <form class="card stack" id="formMatch">
+        <h2 style="margin:0">Meci nou</h2>
+        <div class="row">
+          <input type="text" id="newMatch" placeholder="Adversar (ex: Vaslui)" maxlength="40" style="flex:2 1 160px">
+          <button class="btn primary" type="submit" style="flex:1 0 auto">＋ Începe</button>
+        </div>
+      </form>
+      <div class="card">
+        <h2>Meciurile mele</h2>
+        <div id="matchList"></div>
+      </div>
+    </div>
+
+    <div id="tabJucatori" class="stack" hidden>
+      <form class="card stack" id="formPlayer">
+        <h2 style="margin:0">Jucător nou</h2>
+        <input type="text" id="newName" placeholder="Nume (ex: Popescu 7)" maxlength="40">
+        <div class="row">
+          <select id="newPost" style="flex:2 1 160px"></select>
+          <button class="btn primary" type="submit" style="flex:1 0 auto">＋ Adaugă</button>
+        </div>
+      </form>
+      <div class="card">
+        <h2>Jucători adverși</h2>
+        <div id="playerList"></div>
+      </div>
+    </div>
+
+    <div class="note" id="storageNote"></div>
   </section>
 
-  <!-- ===== ECRAN 2: POARTA UNUI JUCĂTOR ===== -->
-  <section id="screenPlayer" hidden>
+  <!-- ===== ECRAN MECI ===== -->
+  <section id="screenMatch" class="stack" hidden>
     <div class="topbar">
-      <button class="btn" id="btnBack">← Înapoi</button>
+      <button class="btn" id="mBack">← Înapoi</button>
       <div class="title">
-        <div style="font-weight:800;font-size:1.15rem" id="pName"></div>
-        <select id="pPost" style="padding:6px 8px;margin-top:4px;width:auto"></select>
+        <div class="display" id="mName"></div>
+        <div class="muted" id="mDate"></div>
       </div>
-      <div class="total"><span id="pTotal">0</span><small>șuturi</small></div>
     </div>
 
-    <div class="card">
-      <div class="muted">Apasă pe zona din poartă unde a aruncat jucătorul</div>
-      <div class="goal-wrap">
-        <div class="goal" id="goal"></div>
-        <div class="floor"></div>
-        <div class="sides"><span id="sideL"></span><span id="sideR"></span></div>
+    <div class="scoreboard">
+      <div><strong id="mShots">0</strong><span>șuturi</span></div>
+      <div class="s-save"><strong id="mSaves">0</strong><span>parade</span></div>
+      <div class="s-goal"><strong id="mGoals">0</strong><span>goluri</span></div>
+      <div><strong id="mPct">–</strong><span>apărate</span></div>
+    </div>
+
+    <div class="card stack">
+      <div>
+        <div class="label">1 · De unde s-a aruncat</div>
+        <div class="chips" id="mPosts" style="margin-top:8px"></div>
       </div>
-      <div class="legend">
-        <span><i style="background:var(--red)"></i>aruncă cel mai des</span>
-        <span><i style="background:var(--yellow)"></i>des</span>
-        <span><i style="background:var(--green)"></i>rar</span>
+      <div>
+        <div class="label">Jucătorul (opțional)</div>
+        <select id="mPlayer" style="margin-top:8px"></select>
+      </div>
+      <div>
+        <div class="row" style="align-items:center;justify-content:space-between">
+          <div class="label" style="flex:1 1 auto">2 · Unde a mers mingea</div>
+          <div class="seg" style="flex:none" id="mMode">
+            <button data-mode="shots" aria-pressed="true">Șuturi</button>
+            <button data-mode="goals" aria-pressed="false">Goluri</button>
+          </div>
+        </div>
+        <div style="margin-top:8px">
+          <div class="goal" id="mGoal"></div>
+          <div class="floor"></div>
+          <div class="sides"><span class="sideL"></span><span class="sideR"></span></div>
+        </div>
+      </div>
+      <div class="legend" id="mLegend"></div>
+      <div class="result">
+        <button class="r-save" id="mSave" disabled>✋ APĂRAT</button>
+        <button class="r-goal" id="mGoalBtn" disabled>GOL</button>
       </div>
       <div class="row">
-        <button class="btn" id="btnUndo">↩ Anulează</button>
-        <button class="btn" id="btnFlip">⇄ Întoarce poarta</button>
+        <button class="btn" id="mUndo">↩ Anulează ultimul</button>
+        <button class="btn" id="mFlip">⇄ Întoarce poarta</button>
       </div>
     </div>
 
-    <div class="card">
-      <h2>📋 Cum să stai</h2>
-      <div id="advice"></div>
+    <div class="card stack">
+      <h2 style="margin:0">Analiza meciului</h2>
+      <div id="mReport" class="stack"></div>
+    </div>
+
+    <button class="btn danger" id="mDelete">Șterge meciul</button>
+  </section>
+
+  <!-- ===== ECRAN JUCĂTOR ===== -->
+  <section id="screenPlayer" class="stack" hidden>
+    <div class="topbar">
+      <button class="btn" id="pBack">← Înapoi</button>
+      <div class="title">
+        <div class="display" id="pName"></div>
+        <select id="pPost" style="padding:6px 8px;margin-top:4px;width:auto;max-width:100%"></select>
+      </div>
+    </div>
+
+    <div class="card stack">
+      <div class="muted">Apasă pe zona unde a aruncat jucătorul. Se adună și șuturile lui din meciuri.</div>
+      <div>
+        <div class="goal" id="pGoal"></div>
+        <div class="floor"></div>
+        <div class="sides"><span class="sideL"></span><span class="sideR"></span></div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--hot)"></i>aruncă cel mai des</span>
+        <span><i style="background:var(--warm)"></i>des</span>
+        <span><i style="background:var(--cool)"></i>rar</span>
+      </div>
+      <div class="muted" id="pFromMatches"></div>
+      <div class="row">
+        <button class="btn" id="pUndo">↩ Anulează</button>
+        <button class="btn" id="pFlip">⇄ Întoarce poarta</button>
+      </div>
+    </div>
+
+    <div class="card stack">
+      <h2 style="margin:0">Cum să stai</h2>
+      <div id="pAdvice" class="stack"></div>
     </div>
 
     <div class="row">
-      <button class="btn" id="btnReset">Șterge șuturile</button>
-      <button class="btn" id="btnDelete" style="color:var(--red)">Șterge jucătorul</button>
+      <button class="btn" id="pReset">Șterge șuturile notate</button>
+      <button class="btn danger" id="pDelete">Șterge jucătorul</button>
     </div>
   </section>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status"></div>
 
 <script>
 // Zonele sunt numerotate 0–8 ca poarta văzută DE PE TEREN (cum o vede aruncătorul):
 // 0 1 2 / 3 4 5 / 6 7 8. Coloana 0 de pe teren = partea DREAPTĂ a portarului.
 const ROWS = ["sus", "la mijloc", "jos"];
-const GK_SIDE = ["în dreapta ta", "pe centru", "în stânga ta"];   // din perspectiva portarului
+const GK_SIDE = ["în dreapta ta", "pe centru", "în stânga ta"];
 
 const POSTS = {
   "extrema-stanga": "Extremă stânga",
@@ -202,13 +382,30 @@ const POSTS = {
   "centru": "Centru",
   "pivot": "Pivot",
 };
+// La meci se mai pot nota și aruncările de la 7 m și contraatacurile
+const SHOT_POSTS = { ...POSTS, "7m": "7 metri", "contraatac": "Contraatac" };
+const SHOT_CHIP = {
+  "extrema-stanga": "Extremă st.", "extrema-dreapta": "Extremă dr.",
+  "inter-stanga": "Inter st.", "centru": "Centru", "inter-dreapta": "Inter dr.",
+  "pivot": "Pivot", "7m": "7 m", "contraatac": "Contraatac",
+};
+const POST_ON = {
+  "extrema-stanga": "Pe extrema stângă", "extrema-dreapta": "Pe extrema dreaptă",
+  "inter-stanga": "De la interul stâng", "inter-dreapta": "De la interul drept",
+  "centru": "De la centru", "pivot": "De la pivot",
+  "7m": "La 7 metri", "contraatac": "Pe contraatac",
+};
+// Procent de parade „normal” pentru un portar, pe fiecare tip de aruncare
+const EXPECTED = {
+  "extrema-stanga": 35, "extrema-dreapta": 35, "inter-stanga": 40, "inter-dreapta": 40,
+  "centru": 40, "pivot": 25, "7m": 25, "contraatac": 20,
+};
 
-// Sfaturi de bază pentru fiecare post (din perspectiva portarului)
 const POST_ADVICE = {
   "extrema-stanga": {
     stance: "Lipit de bara din dreapta ta",
     tips: [
-      "Extrema stângă atacă din partea ta dreaptă. Stai cu umărul aproape de bara din dreapta ca să închizi colțul scurt.",
+      "Extrema stângă atacă din partea ta dreaptă. Stai cu umărul aproape de bara din dreapta, ca să închizi colțul scurt.",
       "Când sare, fă un pas în întâmpinarea lui. Cu cât ieși mai mult, cu atât îi rămâne mai puțină poartă.",
       "Ține brațul dinspre bară sus și piciorul dinspre bară întins spre colțul de jos. Cealaltă mână rămâne pregătită pentru colțul lung.",
     ],
@@ -216,7 +413,7 @@ const POST_ADVICE = {
   "extrema-dreapta": {
     stance: "Lipit de bara din stânga ta",
     tips: [
-      "Extrema dreaptă atacă din partea ta stângă. Stai cu umărul aproape de bara din stânga ca să închizi colțul scurt.",
+      "Extrema dreaptă atacă din partea ta stângă. Stai cu umărul aproape de bara din stânga, ca să închizi colțul scurt.",
       "Când sare, fă un pas în întâmpinarea lui. Cu cât ieși mai mult, cu atât îi rămâne mai puțină poartă.",
       "Ține brațul dinspre bară sus și piciorul dinspre bară întins spre colțul de jos. Cealaltă mână rămâne pregătită pentru colțul lung.",
     ],
@@ -253,208 +450,524 @@ const POST_ADVICE = {
       "Reacționează cât mai târziu. Pivotul te fentează des, așa că nu cădea primul.",
     ],
   },
+  "7m": {
+    stance: "Ieșit la 1–2 m de linie, apoi decizi",
+    tips: [
+      "La 7 m, ieși puțin în față ca să-i micșorezi poarta. Rămâi nemișcat până pleacă mingea.",
+      "Urmărește brațul, nu privirea. Mulți aruncă jos, pe lângă picior, așa că fii gata să cobori repede.",
+      "Dacă un jucător aruncă mereu în același loc, notează-l aici și ghicește-i colțul data viitoare.",
+    ],
+  },
+  "contraatac": {
+    stance: "Ieși în întâmpinare și rămâi în picioare",
+    tips: [
+      "Pe contraatac, jucătorul e singur cu tine. Ieși spre el ca să-i închizi unghiul.",
+      "Rămâi în picioare cât mai mult. El are timp să te fenteze, deci nu cădea primul.",
+      "Mai bine ești la 2–3 m de poartă decât pe linie. Un lob se apără mai ușor decât un unghi larg.",
+    ],
+  },
 };
 
-// ---------- Stocare ----------
-const store = {
-  get(key, fallback) {
-    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
-    catch { return fallback; }
-  },
-  set(key, value) {
-    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
-  },
-};
-
-let players = store.get("portar.players", []);
-let flipped = store.get("portar.flipped", false);   // false = văzută de pe teren
-let currentId = null;
-
+// ---------- Utilitare ----------
 const $ = id => document.getElementById(id);
-const save = () => store.set("portar.players", players);
-const current = () => players.find(p => p.id === currentId);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pct = (a, b) => b ? Math.round(a / b * 100) : null;
+const newId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const clone = o => JSON.parse(JSON.stringify(o));
 
 function toast(msg) {
   const t = $("toast");
   t.textContent = msg;
   t.classList.add("show");
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => t.classList.remove("show"), 1300);
+  toast.timer = setTimeout(() => t.classList.remove("show"), 1500);
 }
 
-function escapeHtml(str) {
-  return str.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
-
-function fillPostSelect(sel) {
-  sel.innerHTML = Object.entries(POSTS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
-}
-
-// ---------- Culori: roșu / galben / verde după frecvență ----------
-function counts(shots) {
-  const c = Array(9).fill(0);
-  shots.forEach(z => c[z]++);
-  return c;
-}
-
-function heatClass(n, max) {
-  if (!n) return "";
-  const r = n / max;
-  if (r >= 0.67) return "red";
-  if (r >= 0.34) return "yellow";
-  return "green";
-}
-
-const MINI_COLORS = { red: "#ff3b30", yellow: "#ffcc00", green: "#34c759" };
-
-// ---------- Ecran: lista de jucători ----------
-function renderList() {
-  const list = $("playerList");
-  if (!players.length) {
-    list.innerHTML = `<div class="muted">Niciun jucător încă. Adaugă primul jucător mai sus.</div>`;
-    return;
-  }
-  list.innerHTML = "";
-  players.forEach(p => {
-    const c = counts(p.shots);
-    const max = Math.max(...c);
-    const btn = document.createElement("button");
-    btn.className = "player";
-    btn.innerHTML = `
-      <div class="mini">${c.map((n, i) => {
-        const col = MINI_COLORS[heatClass(c[displayToZone(i)], max)];
-        return `<span${col ? ` style="background:${col}"` : ""}></span>`;
-      }).join("")}</div>
-      <div class="info">
-        <div class="name">${escapeHtml(p.name)}</div>
-        <div class="muted">${POSTS[p.post]} · ${p.shots.length} șuturi</div>
-      </div>
-      <span class="muted">›</span>`;
-    btn.addEventListener("click", () => openPlayer(p.id));
-    list.appendChild(btn);
+// Confirmare în două atingeri (dialogurile confirm() nu apar în pagină)
+function armConfirm(btn, armedText, action) {
+  btn.addEventListener("click", () => {
+    if (btn.dataset.armed) {
+      clearTimeout(btn._t);
+      delete btn.dataset.armed;
+      btn.textContent = btn._label;
+      action();
+      return;
+    }
+    btn._label = btn.textContent;
+    btn.dataset.armed = "1";
+    btn.textContent = armedText;
+    btn._t = setTimeout(() => { delete btn.dataset.armed; btn.textContent = btn._label; }, 3000);
   });
 }
 
-function addPlayer() {
-  const name = $("newName").value.trim();
-  if (!name) { $("newName").focus(); toast("Scrie numele jucătorului"); return; }
-  const p = { id: Date.now(), name, post: $("newPost").value, shots: [] };
-  players.push(p);
-  save();
-  $("newName").value = "";
-  renderList();
-  openPlayer(p.id);
+const local = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+
+// ---------- Date: baza de date a paginii, sau browserul ca rezervă ----------
+const state = { players: {}, matches: {}, ready: false };
+let db = null;
+const dirty = { players: new Set(), matches: new Set() };
+const writing = {};
+
+function persist(coll, id) {
+  if (!db) {
+    local.set("portar.data", { players: state.players, matches: state.matches });
+    return;
+  }
+  dirty[coll].add(id);
+  const key = coll + "/" + id;
+  if (writing[key]) { writing[key].again = true; return; }
+  writing[key] = { again: false };
+  (async () => {
+    const ref = db.collection(coll).doc(id);
+    do {
+      writing[key].again = false;
+      const obj = state[coll][id];
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          if (obj) { const { id: _, ...body } = obj; await ref.set(clone(body)); }
+          else await ref.delete();
+          break;
+        } catch (e) {
+          if (e && e.code === "unavailable" && attempt === 0) { await new Promise(r => setTimeout(r, 600 + Math.random() * 600)); continue; }
+          toast(e && e.code === "quota_exceeded" ? "Memoria e plină. Șterge meciuri vechi." : "Nu s-a putut salva. Încearcă din nou.");
+          break;
+        }
+      }
+    } while (writing[key].again);
+    delete writing[key];
+    dirty[coll].delete(id);
+  })();
 }
 
-$("btnAdd").addEventListener("click", addPlayer);
-$("newName").addEventListener("keydown", e => { if (e.key === "Enter") addPlayer(); });
+function subscribe(coll) {
+  db.collection(coll).onSnapshot(snap => {
+    const next = {};
+    snap.docs.forEach(d => { next[d.id] = { id: d.id, ...clone(d.data()) }; });
+    // modificările locale încă nesalvate au prioritate
+    dirty[coll].forEach(id => {
+      if (state[coll][id]) next[id] = state[coll][id];
+      else delete next[id];
+    });
+    state[coll] = next;
+    state.ready = true;
+    render();
+  }, () => toast("Conexiunea la date s-a întrerupt. Reîncarcă pagina."));
+}
 
-// ---------- Ecran: poarta jucătorului ----------
-// Când poarta e întoarsă (văzută din perspectiva portarului), coloanele se inversează.
+async function initStorage() {
+  let found = null;
+  if (window.claude && typeof window.claude.use === "function") {
+    try { found = await window.claude.use("db"); } catch { found = null; }
+  }
+  if (found) {
+    db = found;
+    $("storageNote").textContent = "Meciurile se salvează automat.";
+    subscribe("players");
+    subscribe("matches");
+  } else {
+    const saved = local.get("portar.data", { players: {}, matches: {} });
+    state.players = saved.players || {};
+    state.matches = saved.matches || {};
+    state.ready = true;
+    $("storageNote").textContent = "Meciurile se salvează în acest browser.";
+    render();
+  }
+}
+
+// ---------- Poarta ----------
+let flipped = local.get("portar.flipped", false);
+
 function displayToZone(i) {
   if (!flipped) return i;
   const row = Math.floor(i / 3), col = i % 3;
   return row * 3 + (2 - col);
 }
 
-function openPlayer(id) {
-  currentId = id;
-  $("screenList").hidden = true;
-  $("screenPlayer").hidden = false;
-  window.scrollTo(0, 0);
-  renderPlayer();
+function heat(n, max) {
+  if (!n) return "";
+  const r = n / max;
+  if (r >= 0.67) return "hot";
+  if (r >= 0.34) return "warm";
+  return "cool";
 }
 
-function closePlayer() {
-  currentId = null;
-  $("screenPlayer").hidden = true;
-  $("screenList").hidden = false;
-  renderList();
-}
-
-function renderPlayer(pingZone = null) {
-  const p = current();
-  if (!p) return closePlayer();
-  $("pName").textContent = p.name;
-  $("pPost").value = p.post;
-  $("pTotal").textContent = p.shots.length;
-  $("sideL").textContent = flipped ? "← stânga ta" : "← dreapta ta (portar)";
-  $("sideR").textContent = flipped ? "dreapta ta →" : "stânga ta (portar) →";
-  $("btnUndo").disabled = !p.shots.length;
-
-  const c = counts(p.shots);
-  const max = Math.max(...c);
-  const total = p.shots.length;
-  const goal = $("goal");
-  goal.innerHTML = "";
-  for (let i = 0; i < 9; i++) {
-    const z = displayToZone(i);
-    const n = c[z];
-    const cell = document.createElement("button");
-    cell.className = "cell " + heatClass(n, max) + (z === pingZone ? " ping" : "");
-    cell.innerHTML = n
-      ? `<span class="n">${n}</span><span class="p">${Math.round(n / total * 100)}%</span>`
-      : `<span class="n" style="opacity:.25">0</span>`;
-    cell.addEventListener("click", () => addShot(z));
-    goal.appendChild(cell);
-  }
-  renderAdvice(p);
-}
-
-function addShot(z) {
-  const p = current();
-  p.shots.push(z);
-  save();
-  if (navigator.vibrate) navigator.vibrate(25);
-  renderPlayer(z);
-}
-
-$("btnBack").addEventListener("click", closePlayer);
-$("btnUndo").addEventListener("click", () => {
-  const p = current();
-  if (!p.shots.length) return;
-  p.shots.pop();
-  save();
-  toast("Ultimul șut a fost șters");
-  renderPlayer();
-});
-$("btnFlip").addEventListener("click", () => {
-  flipped = !flipped;
-  store.set("portar.flipped", flipped);
-  toast(flipped ? "Poarta văzută din spatele tău (portar)" : "Poarta văzută de pe teren");
-  renderPlayer();
-});
-$("pPost").addEventListener("change", e => {
-  current().post = e.target.value;
-  save();
-  renderPlayer();
-});
-$("btnReset").addEventListener("click", () => {
-  const p = current();
-  if (!p.shots.length || !confirm(`Ștergi toate șuturile lui ${p.name}?`)) return;
-  p.shots = [];
-  save();
-  renderPlayer();
-});
-$("btnDelete").addEventListener("click", () => {
-  const p = current();
-  if (!confirm(`Ștergi jucătorul ${p.name}?`)) return;
-  players = players.filter(x => x.id !== p.id);
-  save();
-  closePlayer();
-});
-
-// ---------- Recomandări ----------
 function zoneName(z) {
   const row = Math.floor(z / 3), col = z % 3;
   if (row === 1 && col === 1) return "pe centru, la mijloc";
   return `${ROWS[row]} ${GK_SIDE[col]}`;
 }
 
+function counts(zones) {
+  const c = Array(9).fill(0);
+  zones.forEach(z => c[z]++);
+  return c;
+}
+
+// values: 9 numere (ordinea zonelor); sub(z): text mic; onTap(z)
+function drawGoal(el, values, { sub = () => "", onTap, selected = null, ping = null } = {}) {
+  const max = Math.max(...values);
+  el.innerHTML = "";
+  for (let i = 0; i < 9; i++) {
+    const z = displayToZone(i);
+    const n = values[z];
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.setAttribute("aria-label", `${zoneName(z)}: ${n}`);
+    cell.className = ["cell", heat(n, max), z === selected ? "selected" : "", z === ping ? "ping" : ""].join(" ");
+    cell.innerHTML = n
+      ? `<span class="n">${n}</span><span class="p">${sub(z)}</span>`
+      : `<span class="n" style="opacity:.25">0</span>`;
+    if (onTap) cell.addEventListener("click", () => onTap(z));
+    el.appendChild(cell);
+  }
+}
+
+function drawSides() {
+  document.querySelectorAll(".sideL").forEach(e => e.textContent = flipped ? "← stânga ta" : "← dreapta ta (portar)");
+  document.querySelectorAll(".sideR").forEach(e => e.textContent = flipped ? "dreapta ta →" : "stânga ta (portar) →");
+}
+
+function toggleFlip() {
+  flipped = !flipped;
+  local.set("portar.flipped", flipped);
+  toast(flipped ? "Poarta văzută din spatele tău" : "Poarta văzută de pe teren");
+  render();
+}
+
+function miniGoal(zones) {
+  const c = counts(zones), max = Math.max(...c);
+  return `<div class="mini" aria-hidden="true">${c.map((_, i) => `<span class="${heat(c[displayToZone(i)], max)}"></span>`).join("")}</div>`;
+}
+
+function pctClass(p) {
+  if (p === null) return "none";
+  if (p >= 33) return "good";
+  if (p >= 25) return "mid";
+  return "bad";
+}
+
+// ---------- Navigare ----------
+let view = { screen: "home", tab: "meciuri", id: null };
+
+function go(screen, id = null) {
+  view.screen = screen;
+  view.id = id;
+  if (screen === "match") { mSelZone = null; mPlayer = ""; }
+  window.scrollTo(0, 0);
+  render();
+}
+
+function render() {
+  if (view.screen === "match" && state.ready && !state.matches[view.id]) view.screen = "home";
+  if (view.screen === "player" && state.ready && !state.players[view.id]) view.screen = "home";
+  $("screenHome").hidden = view.screen !== "home";
+  $("screenMatch").hidden = view.screen !== "match";
+  $("screenPlayer").hidden = view.screen !== "player";
+  drawSides();
+  if (view.screen === "home") renderHome();
+  if (view.screen === "match") renderMatch();
+  if (view.screen === "player") renderPlayer();
+}
+
+// ---------- Ecran principal ----------
+document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => {
+  view.tab = b.dataset.tab;
+  document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-selected", x === b));
+  $("tabMeciuri").hidden = view.tab !== "meciuri";
+  $("tabJucatori").hidden = view.tab !== "jucatori";
+  renderHome();
+}));
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" });
+}
+function sortedMatches() {
+  return Object.values(state.matches).sort((a, b) => (b.created || 0) - (a.created || 0));
+}
+function sortedPlayers() {
+  return Object.values(state.players).sort((a, b) => a.name.localeCompare(b.name, "ro"));
+}
+
+function renderHome() {
+  const ml = $("matchList");
+  const matches = sortedMatches();
+  if (!state.ready) ml.innerHTML = `<div class="empty muted">Se încarcă meciurile…</div>`;
+  else if (!matches.length) ml.innerHTML = `<div class="empty muted">Niciun meci încă. Scrie numele adversarului mai sus, apasă <strong>Începe</strong> și notează fiecare șut.</div>`;
+  else {
+    ml.innerHTML = "";
+    matches.forEach(m => {
+      const saves = m.shots.filter(s => s.r).length;
+      const p = pct(saves, m.shots.length);
+      const b = document.createElement("button");
+      b.className = "item";
+      b.innerHTML = `${miniGoal(m.shots.filter(s => !s.r).map(s => s.z))}
+        <div class="info"><div class="name">${esc(m.name)}</div>
+        <div class="muted">${fmtDate(m.date)} · ${m.shots.length} șuturi · ${saves} parade</div></div>
+        <span class="pct-chip ${pctClass(p)}">${p === null ? "–" : p + "%"}</span>`;
+      b.addEventListener("click", () => go("match", m.id));
+      ml.appendChild(b);
+    });
+  }
+
+  const pl = $("playerList");
+  const players = sortedPlayers();
+  if (!state.ready) pl.innerHTML = `<div class="empty muted">Se încarcă…</div>`;
+  else if (!players.length) pl.innerHTML = `<div class="empty muted">Niciun jucător încă. Adaugă un jucător advers ca să vezi unde aruncă de obicei.</div>`;
+  else {
+    pl.innerHTML = "";
+    players.forEach(p => {
+      const zones = playerZones(p);
+      const b = document.createElement("button");
+      b.className = "item";
+      b.innerHTML = `${miniGoal(zones)}
+        <div class="info"><div class="name">${esc(p.name)}</div>
+        <div class="muted">${POSTS[p.post]} · ${zones.length} șuturi</div></div>
+        <span class="muted" aria-hidden="true">›</span>`;
+      b.addEventListener("click", () => go("player", p.id));
+      pl.appendChild(b);
+    });
+  }
+}
+
+$("formMatch").addEventListener("submit", e => {
+  e.preventDefault();
+  const name = $("newMatch").value.trim();
+  if (!name) { $("newMatch").focus(); toast("Scrie numele adversarului"); return; }
+  const id = newId("m");
+  state.matches[id] = { id, name, date: new Date().toISOString(), created: Date.now(), shots: [] };
+  persist("matches", id);
+  $("newMatch").value = "";
+  go("match", id);
+});
+
+$("formPlayer").addEventListener("submit", e => {
+  e.preventDefault();
+  const name = $("newName").value.trim();
+  if (!name) { $("newName").focus(); toast("Scrie numele jucătorului"); return; }
+  const id = newId("p");
+  state.players[id] = { id, name, post: $("newPost").value, shots: [], created: Date.now() };
+  persist("players", id);
+  $("newName").value = "";
+  go("player", id);
+});
+
+// ---------- Ecran meci ----------
+let mPost = "inter-stanga";
+let mSelZone = null;
+let mPlayer = "";
+let mMode = "shots";
+let mPing = null;
+
+function renderMatch() {
+  const m = state.matches[view.id];
+  if (!m) return;
+  const shots = m.shots;
+  const saves = shots.filter(s => s.r).length;
+  const goals = shots.length - saves;
+  const p = pct(saves, shots.length);
+  $("mName").textContent = "Meci " + m.name;
+  $("mDate").textContent = fmtDate(m.date);
+  $("mShots").textContent = shots.length;
+  $("mSaves").textContent = saves;
+  $("mGoals").textContent = goals;
+  $("mPct").textContent = p === null ? "–" : p + "%";
+
+  const chips = $("mPosts");
+  chips.innerHTML = "";
+  Object.keys(SHOT_CHIP).forEach(k => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = SHOT_CHIP[k];
+    b.setAttribute("aria-pressed", k === mPost);
+    b.addEventListener("click", () => { mPost = k; renderMatch(); });
+    chips.appendChild(b);
+  });
+
+  const sel = $("mPlayer");
+  sel.innerHTML = `<option value="">— nu contează —</option>` +
+    sortedPlayers().map(pl => `<option value="${pl.id}">${esc(pl.name)} (${POSTS[pl.post]})</option>`).join("");
+  sel.value = state.players[mPlayer] ? mPlayer : "";
+
+  document.querySelectorAll("#mMode button").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === mMode));
+  const all = counts(shots.map(s => s.z));
+  const gz = counts(shots.filter(s => !s.r).map(s => s.z));
+  drawGoal($("mGoal"), mMode === "shots" ? all : gz, {
+    selected: mSelZone,
+    ping: mPing,
+    sub: z => mMode === "shots" ? `${gz[z]} ${gz[z] === 1 ? "gol" : "goluri"}` : `din ${all[z]}`,
+    onTap: z => { mSelZone = mSelZone === z ? null : z; renderMatch(); },
+  });
+  mPing = null;
+  $("mLegend").innerHTML = mMode === "shots"
+    ? `<span><i style="background:var(--hot)"></i>aruncă cel mai des</span><span><i style="background:var(--warm)"></i>des</span><span><i style="background:var(--cool)"></i>rar</span>`
+    : `<span><i style="background:var(--hot)"></i>cele mai multe goluri</span><span><i style="background:var(--warm)"></i>multe</span><span><i style="background:var(--cool)"></i>puține</span>`;
+
+  $("mSave").disabled = $("mGoalBtn").disabled = mSelZone === null;
+  $("mUndo").disabled = !shots.length;
+  $("mReport").innerHTML = analyzeMatch(m);
+}
+
+$("mPlayer").addEventListener("change", e => {
+  mPlayer = e.target.value;
+  const pl = state.players[mPlayer];
+  if (pl) mPost = pl.post;
+  renderMatch();
+});
+document.querySelectorAll("#mMode button").forEach(b => b.addEventListener("click", () => { mMode = b.dataset.mode; renderMatch(); }));
+
+function recordShot(saved) {
+  const m = state.matches[view.id];
+  if (!m || mSelZone === null) return;
+  const shot = { z: mSelZone, p: mPost, r: saved ? 1 : 0 };
+  if (mPlayer && state.players[mPlayer]) shot.pl = mPlayer;
+  m.shots.push(shot);
+  persist("matches", m.id);
+  if (navigator.vibrate) navigator.vibrate(saved ? 30 : [20, 40, 20]);
+  toast(saved ? "✋ Paradă!" : "Gol primit");
+  mPing = mSelZone;
+  mSelZone = null;
+  renderMatch();
+}
+$("mSave").addEventListener("click", () => recordShot(true));
+$("mGoalBtn").addEventListener("click", () => recordShot(false));
+$("mUndo").addEventListener("click", () => {
+  const m = state.matches[view.id];
+  if (!m || !m.shots.length) return;
+  m.shots.pop();
+  persist("matches", m.id);
+  toast("Ultimul șut a fost șters");
+  renderMatch();
+});
+$("mFlip").addEventListener("click", toggleFlip);
+$("mBack").addEventListener("click", () => go("home"));
+armConfirm($("mDelete"), "Apasă din nou ca să ștergi", () => {
+  const id = view.id;
+  delete state.matches[id];
+  persist("matches", id);
+  toast("Meci șters");
+  go("home");
+});
+
+// ---------- Analiza meciului ----------
+function verdictFor(p, expected) {
+  const d = p - expected;
+  if (d >= 10) return { cls: "good", text: "✅ Foarte bine!" };
+  if (d >= 0) return { cls: "good", text: "👍 Bine." };
+  if (d >= -10) return { cls: "mid", text: "⚠️ Se poate mai bine." };
+  return { cls: "bad", text: "❌ Ai luat prea multe goluri de aici." };
+}
+
+function zoneTip(z) {
+  const row = Math.floor(z / 3);
+  if (row === 0) return "Ține mâinile mai sus, la nivelul capului, și nu te lăsa jos prea devreme.";
+  if (row === 2) return "Fii gata să cobori repede, cu piciorul sau în fandare. Ține mâinile la nivelul șoldului.";
+  return "Mingile pe lângă șold sunt greu de apărat. Ține brațele aproape de corp și nu le deschide prea devreme.";
+}
+
+function analyzeMatch(m) {
+  const shots = m.shots;
+  if (!shots.length) {
+    return `<div class="muted">Notează șuturile pe poartă: alege de unde s-a aruncat, atinge zona din poartă, apoi apasă <strong>Apărat</strong> sau <strong>Gol</strong>. Analiza apare aici.</div>`;
+  }
+  const saves = shots.filter(s => s.r).length;
+  const goals = shots.length - saves;
+  const p = pct(saves, shots.length);
+
+  let overall;
+  if (p >= 40) overall = { cls: "good", text: "🔥 Meci excelent!" };
+  else if (p >= 33) overall = { cls: "good", text: "👍 Meci bun." };
+  else if (p >= 25) overall = { cls: "mid", text: "⚠️ Meci mediu." };
+  else overall = { cls: "bad", text: "❌ Meci greu, ai primit multe goluri." };
+
+  let html = `<div class="verdict ${overall.cls}">Meci ${esc(m.name)}: ${shots.length} ${shots.length === 1 ? "șut" : "șuturi"} pe poarta ta. Ai apărat ${saves} și ai primit ${goals} ${goals === 1 ? "gol" : "goluri"}, adică <strong>${p}%</strong> parade. ${overall.text}</div>`;
+
+  // pe poziții, de la cea mai problematică la cea mai bună
+  const groups = Object.keys(SHOT_POSTS).map(k => {
+    const list = shots.filter(s => s.p === k);
+    const sv = list.filter(s => s.r).length;
+    const gz = counts(list.filter(s => !s.r).map(s => s.z));
+    return { k, n: list.length, sv, g: list.length - sv, p: pct(sv, list.length), gz };
+  }).filter(g => g.n > 0);
+  groups.sort((a, b) => (a.p - EXPECTED[a.k]) - (b.p - EXPECTED[b.k]));
+
+  html += `<ul class="report">` + groups.map(g => {
+    let line = `<strong>${POST_ON[g.k]}:</strong> ${g.n} ${g.n === 1 ? "șut" : "șuturi"}, ai apărat ${g.sv} și ai luat ${g.g} ${g.g === 1 ? "gol" : "goluri"} (${g.p}%).`;
+    if (g.n < 3) return `<li>${line}<span class="tip">Prea puține șuturi ca să tragem o concluzie.</span></li>`;
+    const v = verdictFor(g.p, EXPECTED[g.k]);
+    line += ` ${v.text}`;
+    let tip = "";
+    const maxG = Math.max(...g.gz);
+    if (maxG >= 2) tip += `Cele mai multe goluri au intrat ${zoneName(g.gz.indexOf(maxG))} (${maxG}). `;
+    if (v.cls !== "good") tip += "Sfat: " + POST_ADVICE[g.k].tips[0];
+    return `<li class="${v.cls}">${line}${tip ? `<span class="tip">${tip}</span>` : ""}</li>`;
+  }).join("") + `</ul>`;
+
+  const judged = groups.filter(g => g.n >= 3);
+  const notes = [];
+  if (judged.length >= 2) {
+    const best = judged[judged.length - 1], worst = judged[0];
+    notes.push(`Cel mai bine ai apărat ${POST_ON[best.k].toLowerCase()} (${best.p}%). Cel mai greu ți-a fost ${POST_ON[worst.k].toLowerCase()} (${worst.p}%).`);
+  }
+  const gzAll = counts(shots.filter(s => !s.r).map(s => s.z));
+  const maxAll = Math.max(...gzAll);
+  if (maxAll >= 2) {
+    const z = gzAll.indexOf(maxAll);
+    notes.push(`Cele mai multe goluri le-ai primit ${zoneName(z)} (${maxAll} din ${goals}). ${zoneTip(z)}`);
+  }
+  const up = gzAll[0] + gzAll[1] + gzAll[2], down = gzAll[6] + gzAll[7] + gzAll[8];
+  if (goals >= 5 && up / goals >= 0.5) notes.push("Peste jumătate din goluri au intrat sus. La următorul meci, ține mâinile sus.");
+  if (goals >= 5 && down / goals >= 0.5) notes.push("Peste jumătate din goluri au intrat jos. La următorul meci, lucrează la fandare și la plecarea cu piciorul.");
+  if (notes.length) html += `<div class="stack" style="gap:6px"><div class="label">Pentru meciul următor</div>${notes.map(n => `<div>${n}</div>`).join("")}</div>`;
+  return html;
+}
+
+// ---------- Ecran jucător ----------
+let pPing = null;
+
+function playerMatchShots(p) {
+  const out = [];
+  Object.values(state.matches).forEach(m => m.shots.forEach(s => { if (s.pl === p.id) out.push(s); }));
+  return out;
+}
+function playerZones(p) {
+  return [...p.shots, ...playerMatchShots(p).map(s => s.z)];
+}
+
+function renderPlayer() {
+  const p = state.players[view.id];
+  if (!p) return;
+  $("pName").textContent = p.name;
+  $("pPost").value = p.post;
+  const zones = playerZones(p);
+  const c = counts(zones);
+  drawGoal($("pGoal"), c, {
+    ping: pPing,
+    sub: z => Math.round(c[z] / zones.length * 100) + "%",
+    onTap: z => {
+      p.shots.push(z);
+      persist("players", p.id);
+      if (navigator.vibrate) navigator.vibrate(25);
+      pPing = z;
+      renderPlayer();
+    },
+  });
+  pPing = null;
+
+  const ms = playerMatchShots(p);
+  const sv = ms.filter(s => s.r).length;
+  $("pFromMatches").textContent = ms.length
+    ? `Din meciuri: ${ms.length} șuturi, ai apărat ${sv} (${pct(sv, ms.length)}%).`
+    : "Când notezi un șut la meci, alege-l pe jucător ca să apară și aici.";
+  $("pUndo").disabled = !p.shots.length;
+  renderAdvice(p, zones);
+}
+
 function stanceSvg(post) {
-  // siluetă simplă: X pentru pivot, mâini sus pentru rest
-  const x = post === "pivot";
-  return `<svg width="44" height="54" viewBox="0 0 44 54" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+  const x = post === "pivot" || post === "contraatac";
+  return `<svg width="44" height="54" viewBox="0 0 44 54" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true">
     <circle cx="22" cy="8" r="5"/>
     <path d="M22 13v18"/>
     ${x ? `<path d="M22 18L6 6M22 18l16-12"/><path d="M22 31L8 50M22 31l14 19"/>`
@@ -462,32 +975,24 @@ function stanceSvg(post) {
   </svg>`;
 }
 
-function renderAdvice(p) {
+function renderAdvice(p, zones) {
   const base = POST_ADVICE[p.post];
-  const tips = [...base.tips];
-  const total = p.shots.length;
-  const c = counts(p.shots);
+  const total = zones.length;
+  const c = counts(zones);
   const extra = [];
 
   if (total < 3) {
-    extra.push(`Notează cel puțin 3 șuturi ca să primești sfaturi după unde aruncă ${escapeHtml(p.name)}.`);
+    extra.push(`Notează cel puțin 3 șuturi ca să primești sfaturi după unde aruncă ${esc(p.name)}.`);
   } else {
-    // Zona preferată
     const max = Math.max(...c);
     const fav = c.map((n, z) => n === max ? z : -1).filter(z => z >= 0);
     extra.push(`<strong>Zona preferată:</strong> ${fav.map(zoneName).join(" și ")} (${max} din ${total} șuturi). Fii pregătit în primul rând pentru zona asta.`);
 
-    // Sus / jos
     const sus = c[0] + c[1] + c[2], jos = c[6] + c[7] + c[8];
-    if (sus / total >= 0.5) {
-      extra.push("<strong>Aruncă mult sus.</strong> Ține mâinile sus, la nivelul capului. Nu te lăsa jos și nu îndoi prea mult genunchii.");
-    } else if (jos / total >= 0.5) {
-      extra.push("<strong>Aruncă mult jos.</strong> Coboară puțin centrul de greutate și ține mâinile la nivelul șoldului. Fii gata să aperi cu piciorul (fandare sau split).");
-    } else {
-      extra.push("Aruncă la fel de des sus și jos, deci rămâi în poziția de bază, echilibrat.");
-    }
+    if (sus / total >= 0.5) extra.push("<strong>Aruncă mult sus.</strong> Ține mâinile sus, la nivelul capului. Nu te lăsa jos și nu îndoi prea mult genunchii.");
+    else if (jos / total >= 0.5) extra.push("<strong>Aruncă mult jos.</strong> Coboară puțin centrul de greutate și ține mâinile la nivelul șoldului. Fii gata să aperi cu piciorul (fandare sau split).");
+    else extra.push("Aruncă la fel de des sus și jos, deci rămâi în poziția de bază, echilibrat.");
 
-    // Stânga / dreapta (din perspectiva portarului); la extreme se ocupă sfatul de colț lung/scurt
     const gkRight = c[0] + c[3] + c[6], gkLeft = c[2] + c[5] + c[8];
     const wing = p.post.startsWith("extrema");
     if (!wing && gkRight / total >= 0.5 && gkRight >= 2 * gkLeft) {
@@ -495,33 +1000,56 @@ function renderAdvice(p) {
     } else if (!wing && gkLeft / total >= 0.5 && gkLeft >= 2 * gkRight) {
       extra.push("<strong>Aruncă mai ales în partea ta stângă.</strong> Mută-te cu o jumătate de pas spre stânga. Așa închizi colțul lui preferat și îl obligi să arunce unde îi place mai puțin.");
     }
-
-    // Combinații cu postul
     if (wing) {
-      // colțul lung pentru extrema stângă e în stânga portarului, pentru extrema dreaptă în dreapta
+      // colțul lung: pentru extrema stângă e în stânga portarului, pentru extrema dreaptă în dreapta
       const longSide = p.post === "extrema-stanga" ? gkLeft : gkRight;
-      if (longSide / total >= 0.5) {
-        extra.push("<strong>Extrema asta trage des în colțul lung.</strong> Nu te lipi complet de bară. Rămâi la o palmă de ea, cu greutatea pe piciorul dinspre centru.");
-      } else {
-        extra.push("<strong>Extrema asta trage des la colțul scurt.</strong> Rămâi lipit de bară și ține brațul dinspre bară foarte sus.");
-      }
+      if (longSide / total >= 0.5) extra.push("<strong>Extrema asta trage des în colțul lung.</strong> Nu te lipi complet de bară. Rămâi la o palmă de ea, cu greutatea pe piciorul dinspre centru.");
+      else extra.push("<strong>Extrema asta trage des la colțul scurt.</strong> Rămâi lipit de bară și ține brațul dinspre bară foarte sus.");
     }
-    if (c[4] / total >= 0.3) {
-      extra.push("<strong>Aruncă des pe centru,</strong> adesea pe lângă șold sau printre picioare. Ține picioarele apropiate și nu sări prea devreme.");
-    }
+    if (c[4] / total >= 0.3) extra.push("<strong>Aruncă des pe centru,</strong> adesea pe lângă șold sau printre picioare. Ține picioarele apropiate și nu sări prea devreme.");
   }
 
-  $("advice").innerHTML = `
-    <div class="stance">${stanceSvg(p.post)}<div><div class="muted">Poziție recomandată</div><strong>${base.stance}</strong></div></div>
-    ${extra.length ? `<ul class="tips">${extra.map(t => `<li>${t}</li>`).join("")}</ul>` : ""}
-    <div class="muted" style="margin:10px 0 6px">Pentru postul de ${POSTS[p.post].toLowerCase()}:</div>
-    <ul class="tips">${tips.map(t => `<li>${t}</li>`).join("")}</ul>`;
+  $("pAdvice").innerHTML = `
+    <div class="stance">${stanceSvg(p.post)}<div><div class="label">Poziție recomandată</div><strong>${base.stance}</strong></div></div>
+    <ul class="tips">${extra.map(t => `<li>${t}</li>`).join("")}</ul>
+    <div class="label">Pentru postul de ${POSTS[p.post].toLowerCase()}</div>
+    <ul class="tips">${base.tips.map(t => `<li>${t}</li>`).join("")}</ul>`;
 }
 
+$("pBack").addEventListener("click", () => go("home"));
+$("pFlip").addEventListener("click", toggleFlip);
+$("pPost").addEventListener("change", e => {
+  const p = state.players[view.id];
+  p.post = e.target.value;
+  persist("players", p.id);
+  renderPlayer();
+});
+$("pUndo").addEventListener("click", () => {
+  const p = state.players[view.id];
+  if (!p.shots.length) return;
+  p.shots.pop();
+  persist("players", p.id);
+  toast("Ultimul șut a fost șters");
+  renderPlayer();
+});
+armConfirm($("pReset"), "Apasă din nou ca să ștergi", () => {
+  const p = state.players[view.id];
+  p.shots = [];
+  persist("players", p.id);
+  renderPlayer();
+});
+armConfirm($("pDelete"), "Apasă din nou ca să ștergi", () => {
+  const id = view.id;
+  delete state.players[id];
+  persist("players", id);
+  toast("Jucător șters");
+  go("home");
+});
+
 // ---------- Start ----------
-fillPostSelect($("newPost"));
-fillPostSelect($("pPost"));
-renderList();
+for (const sel of [$("newPost"), $("pPost")]) {
+  sel.innerHTML = Object.entries(POSTS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+}
+render();
+initStorage();
 </script>
-</body>
-</html>
