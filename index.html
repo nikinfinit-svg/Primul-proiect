@@ -201,6 +201,14 @@
   }
   .stance svg { flex: none; }
 
+  .scout { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .scout summary { cursor: pointer; font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; }
+  .scout .facts { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+  .who { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+  .who:first-child { border-top: 0; }
+  .who > div { min-width: 0; }
+  .tag { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; background: var(--fg); color: var(--bg); vertical-align: 2px; }
+
   .toast {
     position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
     background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px;
@@ -282,6 +290,11 @@
       <div class="s-goal"><strong id="mGoals">0</strong><span>goluri</span></div>
       <div><strong id="mPct">–</strong><span>apărate</span></div>
     </div>
+
+    <details class="card scout" id="mScout" hidden>
+      <summary id="mScoutTitle"></summary>
+      <div id="mScoutBody" class="stack" style="margin-top:12px"></div>
+    </details>
 
     <div class="card stack">
       <div>
@@ -662,7 +675,13 @@ let view = { screen: "home", tab: "meciuri", id: null };
 function go(screen, id = null) {
   view.screen = screen;
   view.id = id;
-  if (screen === "match") { mSelZone = null; mPlayer = ""; }
+  if (screen === "match") {
+    mSelZone = null;
+    mPlayer = "";
+    // rezumatul meciurilor trecute e deschis cât timp meciul n-a început
+    const m = state.matches[id];
+    $("mScout").open = !!m && !m.shots.length;
+  }
   window.scrollTo(0, 0);
   render();
 }
@@ -711,7 +730,7 @@ function renderHome() {
       const b = document.createElement("button");
       b.className = "item";
       b.innerHTML = `${miniGoal(m.shots.filter(s => !s.r).map(s => s.z))}
-        <div class="info"><div class="name">${esc(m.name)}</div>
+        <div class="info"><div class="name">${esc(m.name)}${teamMatches(teamKey(m.name)).length > 1 ? ` <span class="muted">· meciul ${matchNumber(m)}</span>` : ""}</div>
         <div class="muted">${fmtDate(m.date)} · ${m.shots.length} șuturi · ${saves} parade</div></div>
         <span class="pct-chip ${pctClass(p)}">${p === null ? "–" : p + "%"}</span>`;
       b.addEventListener("click", () => go("match", m.id));
@@ -739,14 +758,39 @@ function renderHome() {
   }
 }
 
+// ---------- Adversari: același nume = aceeași echipă ----------
+// „Buzău”, „buzau”, „Buzău 2” și „Buzau meci 2” sunt toate echipa „buzau”.
+function teamKey(name) {
+  return String(name).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+    .replace(/\b(meciul|meci|nr)\b\.?/g, " ").replace(/\d+/g, " ").replace(/\s+/g, " ").trim();
+}
+function teamMatches(key) {
+  return Object.values(state.matches).filter(m => teamKey(m.name) === key).sort((a, b) => (a.created || 0) - (b.created || 0));
+}
+function matchNumber(m) {
+  return teamMatches(teamKey(m.name)).findIndex(x => x.id === m.id) + 1;
+}
+function previousMatches(m) {
+  return teamMatches(teamKey(m.name)).filter(x => (x.created || 0) < (m.created || 0));
+}
+function ordinal(n) {
+  return n === 1 ? "Primul meci" : `Al ${n}-lea meci`;
+}
+
 $("formMatch").addEventListener("submit", e => {
   e.preventDefault();
-  const name = $("newMatch").value.trim();
-  if (!name) { $("newMatch").focus(); toast("Scrie numele adversarului"); return; }
+  const typed = $("newMatch").value.trim();
+  if (!typed) { $("newMatch").focus(); toast("Scrie numele adversarului"); return; }
+  const prev = teamMatches(teamKey(typed));
+  // dacă ai mai jucat cu ei, păstrăm numele scris prima dată și aducem jucătorii lor în meci
+  const name = prev.length ? prev[0].name : typed;
+  const roster = [];
+  prev.forEach(pm => matchRoster(pm).forEach(pl => { if (!roster.includes(pl.id)) roster.push(pl.id); }));
   const id = newId("m");
-  state.matches[id] = { id, name, date: new Date().toISOString(), created: Date.now(), shots: [] };
+  state.matches[id] = { id, name, date: new Date().toISOString(), created: Date.now(), shots: [], roster };
   persist("matches", id);
   $("newMatch").value = "";
+  if (prev.length) toast(`${ordinal(prev.length + 1)} cu ${name}`);
   go("match", id);
 });
 
@@ -775,8 +819,10 @@ function renderMatch() {
   const saves = shots.filter(s => s.r).length;
   const goals = shots.length - saves;
   const p = pct(saves, shots.length);
-  $("mName").textContent = "Meci " + m.name;
-  $("mDate").textContent = fmtDate(m.date);
+  const nr = matchNumber(m);
+  $("mName").textContent = "Meci " + m.name + (nr > 1 ? ` · ${nr}` : "");
+  $("mDate").textContent = (nr > 1 ? `${ordinal(nr)} cu ${m.name} · ` : "") + fmtDate(m.date);
+  renderScout(m);
   $("mShots").textContent = shots.length;
   $("mSaves").textContent = saves;
   $("mGoals").textContent = goals;
@@ -911,6 +957,73 @@ armConfirm($("mDelete"), "Apasă din nou ca să ștergi", () => {
   go("home");
 });
 
+// ---------- Ce știi despre adversar (din meciurile trecute) ----------
+function tendency(pl, zones) {
+  const n = zones.length;
+  if (n < 2) return "";
+  const c = counts(zones);
+  const right = c[0] + c[3] + c[6], left = c[2] + c[5] + c[8];
+  const up = c[0] + c[1] + c[2], down = c[6] + c[7] + c[8];
+  const height = up / n >= 0.6 ? " Mai mult sus." : down / n >= 0.6 ? " Mai mult jos." : "";
+  if (pl.post.startsWith("extrema")) {
+    // extrema stângă vine din dreapta ta: colțul scurt e în dreapta ta
+    const short = pl.post === "extrema-stanga" ? right : left;
+    const long = pl.post === "extrema-stanga" ? left : right;
+    if (short > long) return `Îi place <strong>colțul scurt</strong> (${short} din ${n}).${height}`;
+    if (long > short) return `Îi place <strong>colțul lung</strong> (${long} din ${n}).${height}`;
+    return `Aruncă la fel de des în ambele colțuri.${height}`;
+  }
+  const max = Math.max(...c);
+  if (max >= 2) return `Aruncă des <strong>${zoneName(c.indexOf(max))}</strong> (${max} din ${n}).`;
+  return height.trim();
+}
+
+function renderScout(m) {
+  const prev = previousMatches(m);
+  $("mScout").hidden = !prev.length;
+  if (!prev.length) return;
+  $("mScoutTitle").textContent = `📋 Ce știi despre ${m.name}`;
+
+  const facts = prev.map((pm, i) => {
+    const sv = pm.shots.filter(s => s.r).length;
+    const p = pct(sv, pm.shots.length);
+    return `<li><strong>Meciul ${i + 1}</strong> (${fmtDate(pm.date)}): ${pm.shots.length} șuturi, ai apărat ${sv}${p === null ? "" : ` (${p}%)`}.</li>`;
+  });
+  const allPrev = prev.flatMap(pm => pm.shots);
+  if (prev.length > 1 && allPrev.length) {
+    const sv = allPrev.filter(s => s.r).length;
+    facts.push(`<li>În total cu ${esc(m.name)}: <strong>${pct(sv, allPrev.length)}%</strong> parade.</li>`);
+  }
+
+  // jucătorii lor, după câte șuturi au avut
+  const per = {};
+  prev.forEach(pm => pm.shots.forEach(s => {
+    if (s.pl && state.players[s.pl]) (per[s.pl] = per[s.pl] || []).push({ ...s, mid: pm.id });
+  }));
+  const list = Object.entries(per).map(([id, sh]) => ({
+    pl: state.players[id], sh, g: sh.filter(s => !s.r).length, games: new Set(sh.map(s => s.mid)).size,
+  })).sort((a, b) => b.sh.length - a.sh.length || b.g - a.g);
+
+  const danger = [...list].sort((a, b) => b.g - a.g)[0];
+  if (danger && danger.g >= 2) facts.push(`<li>Cel mai periculos: <strong>${esc(danger.pl.name)}</strong>, ți-a dat ${danger.g} goluri.</li>`);
+  const gz = counts(allPrev.filter(s => !s.r).map(s => s.z));
+  const maxG = Math.max(...gz);
+  if (maxG >= 2) facts.push(`<li>Cele mai multe goluri ți le-au dat ${zoneName(gz.indexOf(maxG))} (${maxG}).</li>`);
+
+  let html = `<ul class="facts">${facts.join("")}</ul>`;
+  if (list.length) {
+    html += `<div class="label">Jucătorii lor</div><div>` + list.map((x, i) => `
+      <div class="who">${miniGoal(x.sh.map(s => s.z))}<div>
+        <strong>${esc(x.pl.name)}</strong> ${i < 3 && x.sh.length >= 3 ? `<span class="tag">principal</span>` : ""}
+        <span class="muted">(${POSTS[x.pl.post]})</span><br>
+        ${x.sh.length} ${x.sh.length === 1 ? "șut" : "șuturi"} în ${x.games} ${x.games === 1 ? "meci" : "meciuri"}, ți-a dat ${x.g} ${x.g === 1 ? "gol" : "goluri"}. ${tendency(x.pl, x.sh.map(s => s.z))}
+      </div></div>`).join("") + `</div>`;
+  } else {
+    html += `<div class="muted">Data trecută n-ai notat numele jucătorilor. Scrie-le acum, ca să le știi data viitoare.</div>`;
+  }
+  $("mScoutBody").innerHTML = html;
+}
+
 // ---------- Analiza meciului ----------
 function verdictFor(p, expected) {
   const d = p - expected;
@@ -994,6 +1107,13 @@ function analyzeMatch(m) {
   if (maxAll >= 2) {
     const z = gzAll.indexOf(maxAll);
     notes.push(`Cele mai multe goluri le-ai primit ${zoneName(z)} (${maxAll} din ${goals}). ${zoneTip(z)}`);
+  }
+  // comparație cu meciul trecut cu aceeași echipă
+  const last = previousMatches(m).filter(x => x.shots.length).pop();
+  if (last && shots.length >= 5) {
+    const lp = pct(last.shots.filter(s => s.r).length, last.shots.length);
+    const d = p - lp;
+    notes.unshift(`Față de meciul trecut cu ${esc(m.name)}: de la ${lp}% la ${p}% parade. ${d > 0 ? `📈 Mai bine cu ${d}%!` : d < 0 ? `📉 Mai slab cu ${-d}%.` : "La fel ca data trecută."}`);
   }
   const up = gzAll[0] + gzAll[1] + gzAll[2], down = gzAll[6] + gzAll[7] + gzAll[8];
   if (goals >= 5 && up / goals >= 0.5) notes.push("Peste jumătate din goluri au intrat sus. La următorul meci, ține mâinile sus.");
