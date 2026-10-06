@@ -107,7 +107,9 @@ form { display: grid; gap: 18px; }
 .play label { flex: 1; display: grid; place-items: center; height: 40px; border-radius: 10px; background: var(--surface); font-weight: 800; color: var(--ink-2); cursor: pointer; }
 .play input:checked + label { background: var(--kaizen); color: var(--surface); }
 .play input:focus-visible + label { outline: 2px solid var(--kaizen); outline-offset: 2px; }
+.gk { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
 .goals-in { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 0.95rem; }
+.save-pct { font-weight: 800; color: var(--kaizen); }
 .goals-in input { width: 60px; padding: 5px 8px; border: 0; border-radius: 10px; background: var(--surface); text-align: center; }
 
 /* Ținta */
@@ -191,7 +193,14 @@ form { display: grid; gap: 18px; }
             <h3 id="play-title">După meci: cum ai jucat?</h3>
             <div class="play" id="play" role="radiogroup" aria-labelledby="play-title"></div>
           </div>
-          <label class="goals-in" for="match-goals">Goluri marcate <input id="match-goals" type="number" min="0" max="50" inputmode="numeric" value="0"></label>
+          <div class="phase">
+            <h3>Statistica de portar</h3>
+            <div class="gk">
+              <label class="goals-in" for="match-saves">Parade <input id="match-saves" type="number" min="0" max="99" inputmode="numeric" value="0"></label>
+              <label class="goals-in" for="match-conceded">Goluri primite <input id="match-conceded" type="number" min="0" max="99" inputmode="numeric" value="0"></label>
+              <span class="save-pct" id="save-pct" aria-live="polite"></span>
+            </div>
+          </div>
         </div>
 
         <div class="q">
@@ -256,16 +265,18 @@ form { display: grid; gap: 18px; }
       ["echipament", "Echipament gata: încălțări, apă, prosop"],
       ["focus", "Mi-am ales 2 lucruri pe care vreau să le fac bine azi"]
     ] },
-    { title: "Încălzire, 20–25 de minute", steps: [
-      ["alergare", "5 minute de alergare ușoară"],
-      ["mobilitate", "Mobilitate: fandări, rotații de șold și de umeri"],
-      ["sprint", "Accelerări scurte și schimbări de direcție"],
-      ["pase", "Pase în doi, tot mai rapide"],
-      ["aruncari", "Aruncări la poartă, de la ușor la tare"]
+    { title: "Încălzire de portar, 20–25 de minute", steps: [
+      ["alergare", "5 minute de alergare ușoară și sărituri pe loc"],
+      ["mobilitate", "Mobilitate: șold, adductori (sfoară ușoară), umeri și încheieturi"],
+      ["reactie", "Reacție: mingi de tenis aruncate de un coleg sau la perete"],
+      ["mingi", "Mingi aruncate ușor în mâini, sus, jos și lateral"],
+      ["aruncari", "Aruncări de la colegi: întâi ușoare și din aceleași locuri, apoi tari"],
+      ["pozitii", "Aruncări de pe extreme, de la 9 metri și 7 metri"]
     ] },
     { title: "În timpul meciului", steps: [
       ["hidratare", "Apă la fiecare pauză"],
-      ["comunicare", "Am vorbit cu echipa în apărare"]
+      ["comunicare", "Am dirijat apărarea cu voce tare"],
+      ["reset", "După fiecare gol primit: respir adânc și trec la următoarea minge"]
     ] },
     { title: "După meci", steps: [
       ["revenire", "5–10 minute de alergare ușoară și stretching"],
@@ -323,9 +334,10 @@ form { display: grid; gap: 18px; }
         example: true
       };
       if (matchDay) out[iso(day)].match = {
-        done: ["somn", "masa", "apa", "echipament", "alergare", "mobilitate", "pase", "aruncari"].filter(function () { return rnd() < 0.5 + 0.4 * t; }),
+        done: ["somn", "masa", "apa", "echipament", "alergare", "mobilitate", "reactie", "aruncari"].filter(function () { return rnd() < 0.5 + 0.4 * t; }),
         play: Math.min(5, Math.max(1, Math.round(2.6 + 1.6 * t + (rnd() - 0.5) * 2))),
-        goals: Math.floor(rnd() * (2 + 4 * t))
+        saves: 6 + Math.floor(rnd() * (6 + 6 * t)),
+        conceded: 14 + Math.floor(rnd() * (12 - 6 * t))
       };
     }
     return out;
@@ -373,7 +385,8 @@ form { display: grid; gap: 18px; }
     return {
       n: list.length,
       play: avg(list.map(function (e) { return e.match.play; }).filter(Boolean)),
-      goals: list.reduce(function (g, e) { return g + (e.match.goals || 0); }, 0)
+      saves: list.reduce(function (g, e) { return g + (e.match.saves || 0); }, 0),
+      shots: list.reduce(function (g, e) { return g + (e.match.saves || 0) + (e.match.conceded || 0); }, 0)
     };
   }
   function streak() {
@@ -407,6 +420,13 @@ form { display: grid; gap: 18px; }
     $("match-bar").style.width = (n / MATCH_TOTAL * 100) + "%";
   }
 
+  function updateSavePct() {
+    var sv = parseInt($("match-saves").value, 10) || 0, gc = parseInt($("match-conceded").value, 10) || 0;
+    $("save-pct").textContent = sv + gc ? nf0.format(sv / (sv + gc) * 100) + "% parade" : "";
+  }
+  $("match-saves").addEventListener("input", updateSavePct);
+  $("match-conceded").addEventListener("input", updateSavePct);
+
   function fillForm(k) {
     var e = data[k] || {};
     $("date").value = k;
@@ -419,8 +439,10 @@ form { display: grid; gap: 18px; }
     var m = e.match || {};
     document.querySelectorAll("#match-steps input").forEach(function (c) { c.checked = (m.done || []).indexOf(c.dataset.step) >= 0; });
     document.querySelectorAll('input[name="play"]').forEach(function (r) { r.checked = Number(r.value) === m.play; });
-    $("match-goals").value = m.goals || 0;
+    $("match-saves").value = m.saves || 0;
+    $("match-conceded").value = m.conceded || 0;
     updateMatch();
+    updateSavePct();
     $("saved").textContent = "";
   }
 
@@ -455,8 +477,13 @@ form { display: grid; gap: 18px; }
       rows.push([direction(curM.play, prevM.play),
         "Ai jucat <b>" + (curM.n === 1 ? "un meci" : curM.n + " " + de(curM.n) + "meciuri") + "</b>" +
         (curM.play != null ? ", cu nota medie " + nf1.format(curM.play) + " din 5" : "") +
-        (curM.goals ? " și ai marcat " + (curM.goals === 1 ? "un gol" : curM.goals + " " + de(curM.goals) + "goluri") : "") + "." +
-        (prevM.play != null ? " " + cap(P.prev) + ": nota " + nf1.format(prevM.play) + "." : "")]);
+        "." + (prevM.play != null ? " " + cap(P.prev) + ": nota " + nf1.format(prevM.play) + "." : "")]);
+      if (curM.shots) {
+        var pc = curM.saves / curM.shots, pp = prevM.shots ? prevM.saves / prevM.shots : null;
+        rows.push([direction(pc, pp),
+          "Ai apărat <b>" + curM.saves + " din " + curM.shots + " " + de(curM.shots) + "aruncări (" + nf0.format(pc * 100) + "%)</b>." +
+          (pp != null ? " " + cap(P.prev) + ": " + nf0.format(pp * 100) + "%." : "")]);
+      }
     }
     if (cur.moodN) {
       rows.push([direction(cur.greatRate, prev.greatRate),
@@ -577,7 +604,8 @@ form { display: grid; gap: 18px; }
       data[k].match = {
         done: Array.prototype.map.call(document.querySelectorAll("#match-steps input:checked"), function (c) { return c.dataset.step; }),
         play: play ? Number(play.value) : null,
-        goals: Math.max(0, parseInt($("match-goals").value, 10) || 0)
+        saves: Math.max(0, parseInt($("match-saves").value, 10) || 0),
+        conceded: Math.max(0, parseInt($("match-conceded").value, 10) || 0)
       };
     }
     save(); renderAll();
