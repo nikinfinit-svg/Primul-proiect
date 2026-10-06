@@ -1,5 +1,7 @@
 # 🧤 Portar Handbal
 
+**👉 Deschide aplicația: https://claude.ai/artifact/S7jVLsXSFmpYiqPWWXKWn9**
+
 Mini aplicație web pentru portarii de handbal. Este un singur fișier (`index.html`) și nu are nevoie de instalări.
 
 ## Ce face
