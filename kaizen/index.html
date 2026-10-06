@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kaizen Zilnic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;800&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: jurnalul zilei alături de ținta Kaizen, apoi comparația pe perioadă, graficul și istoricul — totul într-o coloană care se strânge pe telefon. */
+:root {
+  --bg: #f1f3f2;
+  --surface: #fcfcfb;
+  --ink: #141a1c;
+  --ink-2: #4c5659;
+  --muted: #6f7a7d;
+  --line: #dde2e1;
+  --accent: #2a78d6;
+  --accent-soft: #e2edf9;
+  --kaizen: #eb6834;
+  --good: #16794a;
+  --good-soft: #def2e7;
+  --bad: #b8392f;
+  --bad-soft: #f8e2df;
+  --font-display: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --radius: 12px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111516; --surface: #1a1a19; --ink: #f2f4f3; --ink-2: #c3c8c6; --muted: #949c9a; --line: #2c3231;
+    --accent: #3987e5; --accent-soft: #1b2c40; --kaizen: #d95926;
+    --good: #5fcb92; --good-soft: #17301f; --bad: #f08a80; --bad-soft: #3a1d1a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111516; --surface: #1a1a19; --ink: #f2f4f3; --ink-2: #c3c8c6; --muted: #949c9a; --line: #2c3231;
+  --accent: #3987e5; --accent-soft: #1b2c40; --kaizen: #d95926;
+  --good: #5fcb92; --good-soft: #17301f; --bad: #f08a80; --bad-soft: #3a1d1a; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.5 var(--font-body); padding-inline: 16px; padding-block: 24px 64px; }
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 20px; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(2rem, 6vw, 3rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+h2 { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em; }
+h3 { font-size: 0.95rem; font-weight: 600; }
+p { margin: 0; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); font-weight: 600; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px; }
+.tagline { color: var(--ink-2); margin-top: 6px; }
+.streak { display: flex; align-items: baseline; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 99px; padding: 6px 14px; }
+.streak b { font-family: var(--font-display); font-size: 1.3rem; }
+
+.banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; background: var(--accent-soft); border-radius: var(--radius); padding: 10px 14px; font-size: 0.95rem; }
+.link-btn { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; display: grid; gap: 16px; min-width: 0; align-content: start; }
+.top { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+
+/* Formularul zilei */
+form { display: grid; gap: 16px; }
+.form-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.form-head input { border: 1px solid var(--line); border-radius: 8px; background: var(--bg); padding: 6px 8px; }
+fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; min-width: 0; }
+legend { padding: 0; margin-bottom: 8px; }
+.stepper { display: flex; align-items: center; gap: 8px; }
+.stepper input { width: 90px; text-align: center; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font-family: var(--font-num); font-size: 1.1rem; }
+.step-btn { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); font-size: 1.2rem; }
+.step-btn:hover { border-color: var(--accent); color: var(--accent); }
+.hint { font-size: 0.88rem; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--bg); border-radius: 99px; padding: 5px 12px; font-size: 0.92rem; color: var(--ink-2); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.minutes { display: flex; align-items: center; gap: 8px; font-size: 0.95rem; color: var(--ink-2); }
+.minutes input { width: 80px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font-family: var(--font-num); }
+.mood { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.mood input { position: absolute; opacity: 0; pointer-events: none; }
+.mood label { display: grid; justify-items: center; gap: 2px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 2px; cursor: pointer; background: var(--bg); text-align: center; }
+.mood label b { font-family: var(--font-display); font-size: 1.25rem; }
+.mood label small { font-size: 0.72rem; color: var(--muted); line-height: 1.2; }
+.mood input:checked + label { border-color: var(--accent); background: var(--accent-soft); }
+.mood input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+textarea { width: 100%; min-height: 60px; resize: vertical; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.primary { background: var(--accent); color: var(--surface); border: 0; border-radius: 8px; padding: 10px 18px; font-weight: 600; }
+.primary:hover { filter: brightness(1.08); }
+.saved { color: var(--good); font-size: 0.92rem; }
+
+/* Kaizen */
+.kaizen-card { gap: 18px; }
+.kaizen-formula { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.kaizen-formula .num { font-size: clamp(1.4rem, 4vw, 1.9rem); color: var(--ink); }
+.targets { display: grid; gap: 10px; }
+.target { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+.target .big { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; }
+.target small { grid-column: 1 / -1; color: var(--muted); font-size: 0.88rem; }
+.insights { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.insights li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; align-items: start; }
+.insights li span:first-child { font-weight: 800; text-align: center; }
+
+.pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 99px; padding: 2px 9px; font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
+.pill.up { background: var(--good-soft); color: var(--good); }
+.pill.down { background: var(--bad-soft); color: var(--bad); }
+.pill.flat { background: var(--bg); color: var(--muted); }
+.up-t { color: var(--good); } .down-t { color: var(--bad); } .flat-t { color: var(--muted); }
+
+/* Perioade */
+.period-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.tabs button { border: 0; background: none; padding: 8px 16px; font-weight: 600; color: var(--ink-2); }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--surface); }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.card { gap: 10px; }
+.card .value { font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 2.4rem); font-weight: 800; line-height: 1.05; }
+.card .unit { color: var(--ink-2); font-size: 0.95rem; }
+.compare { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.92rem; color: var(--ink-2); padding-top: 10px; border-top: 1px solid var(--line); }
+.card .extra { font-size: 0.88rem; color: var(--muted); }
+
+/* Grafic */
+.chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.chart-head select { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.88rem; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.key-bar { width: 10px; height: 12px; border-radius: 3px 3px 0 0; background: var(--accent); }
+.key-line { width: 18px; height: 2px; background: var(--kaizen); border-radius: 2px; }
+.key-avg { width: 18px; height: 1px; background: var(--ink-2); }
+.chart-wrap { position: relative; }
+#chart { display: block; width: 100%; height: auto; overflow: visible; }
+#chart text { font-family: var(--font-body); font-size: 11px; fill: var(--muted); }
+#chart .avg-label { fill: var(--ink-2); font-weight: 600; }
+.tooltip { position: absolute; pointer-events: none; background: var(--ink); color: var(--surface); padding: 6px 10px; border-radius: 8px; font-size: 0.85rem; line-height: 1.35; white-space: nowrap; transform: translate(-50%, -100%); }
+details summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 0.92rem; }
+.table-wrap { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+td.num, th.num { text-align: right; }
+
+/* Istoric */
+.history { list-style: none; margin: 0; padding: 0; display: grid; }
+.history li { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.history li:first-child { border-top: 0; }
+.h-date b { display: block; font-family: var(--font-display); }
+.h-date small { color: var(--muted); font-size: 0.8rem; }
+.h-body { min-width: 0; font-size: 0.95rem; color: var(--ink-2); overflow-wrap: anywhere; }
+.h-body strong { color: var(--ink); font-weight: 600; }
+.tag { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 1px 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); margin-left: 6px; }
+.h-actions { display: flex; gap: 4px; }
+.small-btn { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 4px 10px; font-size: 0.85rem; }
+.small-btn:hover { border-color: var(--accent); color: var(--accent); }
+.small-btn.danger:hover { border-color: var(--bad); color: var(--bad); }
+.empty { color: var(--muted); }
+
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--surface); padding: 10px 16px; border-radius: 8px; display: flex; gap: 14px; align-items: center; max-width: calc(100% - 32px); font-size: 0.95rem; }
+.toast button { background: none; border: 0; padding: 0; color: var(--accent-soft); font-weight: 600; text-decoration: underline; }
+
+@media (max-width: 820px) {
+  .top { grid-template-columns: minmax(0, 1fr); }
+  .cards { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 460px) {
+  .mood label small { font-size: 0.64rem; }
+  .history li { grid-template-columns: 56px minmax(0, 1fr); }
+  .h-actions { grid-column: 2; }
+  .tabs button { padding: 8px 12px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="label">Kaizen · 改善</div>
+      <h1>1% mai bun în fiecare zi</h1>
+      <p class="tagline">Notează ce ai citit, cum te-ai antrenat și cum te simți. Restul îl calculează aplicația.</p>
+    </div>
+    <div class="streak" title="Zile consecutive cu jurnalul completat"><b class="num" id="streak">0</b><span class="label">zile la rând</span></div>
+  </header>
+
+  <div class="banner" id="example-banner" hidden>
+    <span>Zilele marcate „exemplu” sunt date demonstrative, ca să vezi graficele și mediile. Zilele pe care le completezi tu le înlocuiesc.</span>
+    <button class="link-btn" id="clear-examples" type="button">Șterge exemplele</button>
+  </div>
+
+  <div class="top">
+    <section class="panel" aria-labelledby="day-title">
+      <form id="form" novalidate>
+        <div class="form-head">
+          <h2 id="day-title">Jurnalul zilei</h2>
+          <input type="date" id="date" aria-label="Ziua">
+        </div>
+
+        <fieldset>
+          <legend class="label">Pagini citite</legend>
+          <div class="stepper">
+            <button class="step-btn" type="button" data-step="-5" aria-label="Minus 5 pagini">−</button>
+            <input id="pages" type="number" min="0" max="2000" inputmode="numeric" value="0">
+            <button class="step-btn" type="button" data-step="5" aria-label="Plus 5 pagini">+</button>
+          </div>
+          <p class="hint" id="pages-hint"></p>
+        </fieldset>
+
+        <fieldset>
+          <legend class="label">Antrenamente</legend>
+          <div class="chips" id="workouts"></div>
+          <label class="minutes" for="minutes">Durată totală <input id="minutes" type="number" min="0" max="600" inputmode="numeric" value="0"> minute</label>
+        </fieldset>
+
+        <fieldset>
+          <legend class="label">Cum te simți azi?</legend>
+          <div class="mood" id="mood"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend class="label"><label for="note">Notă (opțional)</label></legend>
+          <textarea id="note" maxlength="300" placeholder="ex. Am dormit bine, am terminat capitolul 4"></textarea>
+        </fieldset>
+
+        <div class="actions">
+          <button class="primary" type="submit">Salvează ziua</button>
+          <span class="saved" id="saved" role="status"></span>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel kaizen-card" aria-labelledby="kaizen-title">
+      <div>
+        <h2 id="kaizen-title">Ținta de azi</h2>
+        <p class="hint">Media ultimelor 7 zile, plus 1%.</p>
+      </div>
+      <div class="targets" id="targets"></div>
+      <div>
+        <div class="label" style="margin-bottom:8px">Pe scurt</div>
+        <ul class="insights" id="insights"></ul>
+      </div>
+      <div class="kaizen-formula">
+        <span class="num">1,01<sup>365</sup> ≈ 37,8</span>
+        <span class="hint">1% mai bine în fiecare zi înseamnă de aproape 38 de ori mai bine după un an.</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="period-bar">
+    <h2 id="period-title">Săptămâna aceasta</h2>
+    <div class="tabs" role="tablist" aria-label="Perioada">
+      <button type="button" role="tab" data-period="week" aria-selected="true">Săptămână</button>
+      <button type="button" role="tab" data-period="month" aria-selected="false">Lună</button>
+      <button type="button" role="tab" data-period="year" aria-selected="false">An</button>
+    </div>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <section class="panel" aria-labelledby="chart-title">
+    <div class="chart-head">
+      <h2 id="chart-title">Evoluție</h2>
+      <select id="metric" aria-label="Ce arată graficul">
+        <option value="pages">Pagini citite</option>
+        <option value="minutes">Minute de antrenament</option>
+        <option value="mood">Starea (1–5)</option>
+      </select>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="chart-wrap" id="chart-wrap">
+      <svg id="chart" role="img" aria-labelledby="chart-title"></svg>
+      <div class="tooltip" id="tooltip" hidden></div>
+    </div>
+    <details>
+      <summary>Vezi valorile ca tabel</summary>
+      <div class="table-wrap"><table id="table"></table></div>
+    </details>
+  </section>
+
+  <section class="panel" aria-labelledby="hist-title">
+    <h2 id="hist-title">Ultimele zile</h2>
+    <ul class="history" id="history"></ul>
+  </section>
+</div>
+
+<div class="toast" id="toast" hidden><span id="toast-text"></span><button type="button" id="undo">Anulează</button></div>
+
+<script>
+(function () {
+  var KEY = "kaizen-v1";
+  var WORKOUTS = ["Alergare", "Sală", "Acasă", "Yoga", "Bicicletă", "Înot", "Plimbare", "Altul"];
+  var MOODS = ["Foarte rău", "Rău", "Normal", "Bine", "Foarte bine"];
+  var DAYS = ["luni", "marți", "miercuri", "joi", "vineri", "sâmbătă", "duminică"];
+  var DAYS_SHORT = ["lun", "mar", "mie", "joi", "vin", "sâm", "dum"];
+  var MONTHS = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
+  var MONTHS_SHORT = ["ian", "feb", "mar", "apr", "mai", "iun", "iul", "aug", "sep", "oct", "noi", "dec"];
+  var PERIODS = {
+    week: { title: "Săptămâna aceasta", cur: "săptămâna aceasta", prev: "săptămâna trecută", prevShort: "Săpt. trecută" },
+    month: { title: "Luna aceasta", cur: "luna aceasta", prev: "luna trecută", prevShort: "Luna trecută" },
+    year: { title: "Anul acesta", cur: "anul acesta", prev: "anul trecut", prevShort: "Anul trecut" }
+  };
+  var METRICS = {
+    pages: { name: "pagini", unit: "pagini", get: function (e) { return e.pages; } },
+    minutes: { name: "minute", unit: "min", get: function (e) { return e.minutes || 0; } },
+    mood: { name: "stare", unit: "/ 5", get: function (e) { return e.mood || null; } }
+  };
+
+  var nf1 = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 1 });
+  var nf0 = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 0 });
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function iso(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function parse(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function addDays(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+  function dow(d) { return (d.getDay() + 6) % 7; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  // „20 de pagini”, dar „15 pagini”
+  function de(n) { var r = n % 100; return (n >= 20 && (r === 0 || r >= 20)) ? "de " : ""; }
+  function countWord(n, one, many) { return n === 1 ? (one) : nf0.format(n) + " " + de(n) + many; }
+
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ---------- date ----------
+  function sampleData() {
+    var seed = 11;
+    function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+    var out = {}, span = 420;
+    for (var i = span; i >= 1; i--) {
+      var d = addDays(today, -i), t = 1 - i / span;
+      if (rnd() < 0.12) continue;
+      var trained = rnd() < 0.35 + 0.35 * t;
+      var mood = Math.round(2.5 + 1.7 * t + (rnd() - 0.5) * 2.2 + (trained ? 0.4 : 0));
+      out[iso(d)] = {
+        pages: Math.max(0, Math.round(6 + 16 * t + (rnd() - 0.5) * 14)),
+        workouts: trained ? [WORKOUTS[Math.floor(rnd() * 4)]] : [],
+        minutes: trained ? 20 + Math.round(rnd() * 8) * 5 : 0,
+        mood: Math.min(5, Math.max(1, mood)),
+        note: "",
+        example: true
+      };
+    }
+    return out;
+  }
+  function load() {
+    try { var raw = localStorage.getItem(KEY); if (raw) return JSON.parse(raw); } catch (e) {}
+    return sampleData();
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {} }
+
+  var data = load();
+  var view = { period: "week", metric: "pages" };
+  var undoState = null, toastTimer = null;
+
+  // ---------- calcule ----------
+  function range(kind, off) {
+    var s, e, y = today.getFullYear(), m = today.getMonth();
+    if (kind === "week") { s = addDays(today, -dow(today) + 7 * off); e = addDays(s, 6); }
+    else if (kind === "month") { s = new Date(y, m + off, 1); e = new Date(y, m + off + 1, 0); }
+    else { s = new Date(y + off, 0, 1); e = new Date(y + off, 11, 31); }
+    return { s: s, e: e };
+  }
+  function entriesBetween(a, b) {
+    return Object.keys(data).filter(function (k) { return k >= a && k <= b; }).sort()
+      .map(function (k) { var o = Object.assign({}, data[k]); o.date = k; return o; });
+  }
+  function entriesIn(r) { return entriesBetween(iso(r.s), iso(r.e)); }
+  function stats(list) {
+    var s = { n: list.length, pages: 0, trainDays: 0, minutes: 0, moodSum: 0, moodN: 0, great: 0, good: 0, types: {} };
+    list.forEach(function (e) {
+      s.pages += e.pages || 0;
+      if ((e.minutes || 0) > 0 || (e.workouts && e.workouts.length)) s.trainDays++;
+      s.minutes += e.minutes || 0;
+      (e.workouts || []).forEach(function (w) { s.types[w] = (s.types[w] || 0) + 1; });
+      if (e.mood) { s.moodSum += e.mood; s.moodN++; if (e.mood === 5) s.great++; if (e.mood >= 4) s.good++; }
+    });
+    s.pagesAvg = s.n ? s.pages / s.n : null;
+    s.minutesAvg = s.n ? s.minutes / s.n : null;
+    s.moodAvg = s.moodN ? s.moodSum / s.moodN : null;
+    s.trainRate = s.n ? s.trainDays / s.n : null;
+    s.greatRate = s.moodN ? s.great / s.moodN : null;
+    return s;
+  }
+  function delta(cur, prev) {
+    if (cur == null || prev == null) return null;
+    if (prev === 0) return cur > 0 ? { dir: "up", text: "nou" } : { dir: "flat", text: "la fel" };
+    var p = (cur - prev) / prev * 100;
+    if (Math.abs(p) < 0.5) return { dir: "flat", text: "la fel" };
+    return { dir: p > 0 ? "up" : "down", text: (p > 0 ? "↑ " : "↓ ") + nf0.format(Math.abs(p)) + "%" };
+  }
+  function pill(d) {
+    if (!d) return '<span class="pill flat">fără date anterioare</span>';
+    return '<span class="pill ' + d.dir + '">' + d.text + "</span>";
+  }
+  function streak() {
+    var d = data[iso(today)] ? today : addDays(today, -1), n = 0;
+    while (data[iso(d)]) { n++; d = addDays(d, -1); }
+    return n;
+  }
+  function last7() { return stats(entriesBetween(iso(addDays(today, -7)), iso(addDays(today, -1)))); }
+
+  // ---------- formular ----------
+  function buildForm() {
+    $("workouts").innerHTML = WORKOUTS.map(function (w) {
+      return '<button type="button" class="chip" aria-pressed="false" data-w="' + w + '">' + w + "</button>";
+    }).join("");
+    $("mood").innerHTML = MOODS.map(function (m, i) {
+      return '<input type="radio" name="mood" id="mood-' + (i + 1) + '" value="' + (i + 1) + '"><label for="mood-' + (i + 1) + '"><b>' + (i + 1) + "</b><small>" + m + "</small></label>";
+    }).join("");
+  }
+  function fillForm(dateStr) {
+    var e = data[dateStr] || { pages: 0, workouts: [], minutes: 0, mood: null, note: "" };
+    $("date").value = dateStr;
+    $("pages").value = e.pages || 0;
+    $("minutes").value = e.minutes || 0;
+    $("note").value = e.note || "";
+    document.querySelectorAll("#workouts .chip").forEach(function (c) {
+      c.setAttribute("aria-pressed", String((e.workouts || []).indexOf(c.dataset.w) >= 0));
+    });
+    document.querySelectorAll('input[name="mood"]').forEach(function (r) { r.checked = Number(r.value) === e.mood; });
+    $("saved").textContent = data[dateStr] && !data[dateStr].example ? "Ziua aceasta e deja salvată. Poți modifica." : "";
+    var avg = last7().pagesAvg;
+    $("pages-hint").textContent = avg != null ? "Media ultimelor 7 zile: " + nf1.format(avg) + " pagini." : "";
+  }
+
+  // ---------- randare ----------
+  function renderTargets() {
+    var s7 = last7(), e = data[iso(today)];
+    var rows = [];
+    if (s7.pagesAvg != null) {
+      var tp = Math.ceil(s7.pagesAvg * 1.01), done = e && e.pages >= tp;
+      rows.push('<div class="target"><div><div class="label">Lectură</div><div class="big num">' + countWord(tp, "o pagină", "pagini") + "</div></div>" +
+        (e ? '<span class="pill ' + (done ? "up" : "down") + '">' + (done ? "atinsă: " : "azi: ") + nf0.format(e.pages) + "</span>" : '<span class="pill flat">de completat</span>') +
+        "<small>Media pe 7 zile: " + nf1.format(s7.pagesAvg) + " pagini pe zi.</small></div>");
+    }
+    if (s7.minutesAvg != null) {
+      var tm = Math.ceil(s7.minutesAvg * 1.01), doneM = e && (e.minutes || 0) >= tm;
+      rows.push('<div class="target"><div><div class="label">Mișcare</div><div class="big num">' + countWord(tm, "un minut", "minute") + "</div></div>" +
+        (e ? '<span class="pill ' + (doneM ? "up" : "down") + '">' + (doneM ? "atinsă: " : "azi: ") + nf0.format(e.minutes || 0) + " min</span>" : '<span class="pill flat">de completat</span>') +
+        "<small>Media pe 7 zile: " + nf1.format(s7.minutesAvg) + " minute pe zi, cu zilele de pauză incluse.</small></div>");
+    }
+    $("targets").innerHTML = rows.length ? rows.join("") : '<p class="empty">Completează câteva zile și aici apare ținta ta de azi.</p>';
+  }
+
+  function renderInsights() {
+    var P = PERIODS[view.period];
+    var cur = stats(entriesIn(range(view.period, 0))), prev = stats(entriesIn(range(view.period, -1)));
+    var all = stats(entriesBetween("0000", "9999"));
+    var out = [];
+    function arrow(d) { return d ? (d.dir === "up" ? '<span class="up-t">↑</span>' : d.dir === "down" ? '<span class="down-t">↓</span>' : '<span class="flat-t">=</span>') : '<span class="flat-t">·</span>'; }
+    if (cur.pagesAvg != null) {
+      var d = delta(cur.pagesAvg, prev.pagesAvg);
+      out.push([arrow(d), "Ai o medie de " + nf1.format(cur.pagesAvg) + " pagini pe zi " + P.cur + "." +
+        (prev.pagesAvg != null ? " " + cap(P.prev) + " ai avut " + nf1.format(prev.pagesAvg) + "." : "")]);
+    }
+    if (cur.moodN) {
+      var d2 = delta(cur.greatRate, prev.greatRate);
+      out.push([arrow(d2), cap(P.cur) + " te-ai simțit foarte bine " + cur.great + " din " + cur.moodN + " zile." +
+        (prev.moodN ? " " + cap(P.prev) + ": " + prev.great + " din " + prev.moodN + "." : "")]);
+    }
+    if (cur.n) {
+      var d3 = delta(cur.trainRate, prev.trainRate);
+      out.push([arrow(d3), "Te-ai antrenat " + cur.trainDays + " din " + cur.n + " zile " + P.cur + "." +
+        (prev.n ? " " + cap(P.prev) + ": " + prev.trainDays + " din " + prev.n + "." : "")]);
+    }
+    if (all.pagesAvg != null && all.n > 7) out.push(['<span class="flat-t">Σ</span>', "Media ta de la început: " + nf1.format(all.pagesAvg) + " pagini pe zi, în " + countWord(all.n, "o zi", "zile") + " notate."]);
+    $("insights").innerHTML = out.length ? out.map(function (r) { return "<li><span>" + r[0] + "</span><span>" + r[1] + "</span></li>"; }).join("")
+      : '<li><span></span><span class="empty">Nu ai încă zile notate în perioada aceasta.</span></li>';
+  }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  function renderCards() {
+    var P = PERIODS[view.period];
+    $("period-title").textContent = P.title;
+    var cur = stats(entriesIn(range(view.period, 0))), prev = stats(entriesIn(range(view.period, -1)));
+    var topType = Object.keys(cur.types).sort(function (a, b) { return cur.types[b] - cur.types[a]; })[0];
+    function v(x, f) { return x == null ? "–" : f(x); }
+    var cards = [
+      { title: "Lectură", value: v(cur.pagesAvg, nf1.format), unit: "pagini pe zi, în medie",
+        cmp: P.prevShort + ": " + v(prev.pagesAvg, nf1.format), d: delta(cur.pagesAvg, prev.pagesAvg),
+        extra: "Total: " + countWord(cur.pages, "o pagină", "pagini") + " în " + countWord(cur.n, "o zi notată", "zile notate") + "." },
+      { title: "Antrenament", value: cur.n ? cur.trainDays + " din " + cur.n : "–", unit: "zile cu antrenament",
+        cmp: P.prevShort + ": " + (prev.n ? prev.trainDays + " din " + prev.n : "–"), d: delta(cur.trainRate, prev.trainRate),
+        extra: "Total: " + nf0.format(cur.minutes) + " minute" + (topType ? ". Cel mai des: " + topType.toLowerCase() + "." : ".") },
+      { title: "Cum te simți", value: cur.moodN ? cur.great + " din " + cur.moodN : "–", unit: "zile foarte bune",
+        cmp: P.prevShort + ": " + (prev.moodN ? prev.great + " din " + prev.moodN : "–"), d: delta(cur.greatRate, prev.greatRate),
+        extra: "Stare medie: " + v(cur.moodAvg, nf1.format) + " din 5" + (prev.moodAvg != null ? " (înainte " + nf1.format(prev.moodAvg) + ")." : ".") }
+    ];
+    $("cards").innerHTML = cards.map(function (c) {
+      return '<section class="panel card"><h3 class="label">' + c.title + '</h3><div><div class="value num">' + c.value +
+        '</div><div class="unit">' + c.unit + '</div></div><div class="compare"><span>' + c.cmp + "</span>" + pill(c.d) +
+        '</div><p class="extra">' + c.extra + "</p></section>";
+    }).join("");
+  }
+
+  // ---------- grafic ----------
+  function chartSeries() {
+    var M = METRICS[view.metric], r = range(view.period, 0), pts = [];
+    if (view.period === "year") {
+      for (var m = 0; m < 12; m++) {
+        var st = new Date(r.s.getFullYear(), m, 1), en = new Date(r.s.getFullYear(), m + 1, 0);
+        var vals = entriesIn({ s: st, e: en }).map(M.get).filter(function (x) { return x != null; });
+        pts.push({ label: MONTHS_SHORT[m], full: MONTHS[m], value: vals.length ? vals.reduce(function (a, b) { return a + b; }, 0) / vals.length : null, avgOf: vals.length });
+      }
+    } else {
+      for (var d = new Date(r.s); d <= r.e; d = addDays(d, 1)) {
+        var e = data[iso(d)];
+        pts.push({
+          label: view.period === "week" ? DAYS_SHORT[dow(d)] : String(d.getDate()),
+          full: DAYS[dow(d)] + ", " + d.getDate() + " " + MONTHS[d.getMonth()],
+          value: e ? M.get(e) : null, future: d > today
+        });
+      }
+    }
+    var vals = pts.map(function (p) { return p.value; }).filter(function (x) { return x != null; });
+    var avg = vals.length ? vals.reduce(function (a, b) { return a + b; }, 0) / vals.length : null;
+    // Linia Kaizen: media perioadei trecute, crescută cu 1% pe zi
+    var kaizen = null;
+    if (view.period !== "year" && view.metric !== "mood") {
+      var prevVals = entriesIn(range(view.period, -1)).map(M.get).filter(function (x) { return x != null; });
+      var base = prevVals.length ? prevVals.reduce(function (a, b) { return a + b; }, 0) / prevVals.length : 0;
+      if (base > 0) kaizen = pts.map(function (_, i) { return base * Math.pow(1.01, i + 1); });
+    }
+    return { pts: pts, avg: avg, kaizen: kaizen };
+  }
+
+  function niceStep(max) {
+    var raw = max / 4, mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
+  }
+
+  function renderChart() {
+    var M = METRICS[view.metric], S = chartSeries(), pts = S.pts;
+    var W = Math.max(280, $("chart-wrap").clientWidth), H = 260;
+    var ml = 36, mr = 14, mt = 18, mb = 28, iw = W - ml - mr, ih = H - mt - mb;
+    var top, step;
+    if (view.metric === "mood") { top = 5; step = 1; }
+    else {
+      var mx = Math.max.apply(null, pts.map(function (p) { return p.value || 0; }).concat(S.kaizen || [], [S.avg || 0, 1]));
+      step = niceStep(mx * 1.08); top = Math.ceil(mx * 1.08 / step) * step;
+    }
+    function y(v) { return mt + ih - (v / top) * ih; }
+    var band = iw / pts.length, bw = Math.max(3, Math.min(24, band * 0.62));
+    function cx(i) { return ml + band * i + band / 2; }
+    var svg = "";
+    for (var t = 0; t <= top + 1e-9; t += step) {
+      svg += '<line x1="' + ml + '" x2="' + (W - mr) + '" y1="' + y(t) + '" y2="' + y(t) + '" stroke="var(--line)" stroke-width="1"/>' +
+        '<text x="' + (ml - 8) + '" y="' + (y(t) + 4) + '" text-anchor="end">' + nf0.format(t) + "</text>";
+    }
+    var every = pts.length > 12 ? Math.ceil(pts.length / 8) : 1;
+    pts.forEach(function (p, i) {
+      if (i % every === 0 || (pts.length > 12 && i === pts.length - 1 && (pts.length - 1) % every > every / 2)) {
+        svg += '<text x="' + cx(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + p.label + "</text>";
+      }
+      if (p.value != null && p.value > 0) {
+        var x = cx(i) - bw / 2, yy = y(p.value), h = mt + ih - yy, r = Math.min(4, h, bw / 2);
+        svg += '<path fill="var(--accent)" d="M' + x + "," + (yy + h) + "V" + (yy + r) + "Q" + x + "," + yy + " " + (x + r) + "," + yy +
+          "H" + (x + bw - r) + "Q" + (x + bw) + "," + yy + " " + (x + bw) + "," + (yy + r) + "V" + (yy + h) + 'Z"/>';
+      }
+    });
+    if (S.avg != null) {
+      svg += '<line x1="' + ml + '" x2="' + (W - mr) + '" y1="' + y(S.avg) + '" y2="' + y(S.avg) + '" stroke="var(--ink-2)" stroke-width="1"/>' +
+        '<text class="avg-label" x="' + (ml + 4) + '" y="' + (y(S.avg) - 6) + '">medie ' + nf1.format(S.avg) + "</text>";
+    }
+    if (S.kaizen) {
+      var d = S.kaizen.map(function (v, i) { return (i ? "L" : "M") + cx(i) + "," + y(v); }).join("");
+      var li = S.kaizen.length - 1;
+      svg += '<path d="' + d + '" fill="none" stroke="var(--kaizen)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '<circle cx="' + cx(li) + '" cy="' + y(S.kaizen[li]) + '" r="4" fill="var(--kaizen)" stroke="var(--surface)" stroke-width="2"/>';
+    }
+    svg += '<line x1="' + ml + '" x2="' + (W - mr) + '" y1="' + (mt + ih) + '" y2="' + (mt + ih) + '" stroke="var(--muted)" stroke-width="1"/>';
+    var chart = $("chart");
+    chart.setAttribute("viewBox", "0 0 " + W + " " + H);
+    chart.innerHTML = svg;
+
+    var barName = view.period === "year" ? "Media lunară" : "Valoarea zilei";
+    $("legend").innerHTML = '<span><i class="key-bar"></i>' + barName + " (" + M.name + ")</span>" +
+      '<span><i class="key-avg"></i>Media ' + PERIODS[view.period].cur + "</span>" +
+      (S.kaizen ? '<span><i class="key-line"></i>Drumul Kaizen: media perioadei trecute + 1% pe zi</span>' : "");
+
+    // tooltip
+    chart.onpointermove = function (ev) {
+      var rect = chart.getBoundingClientRect(), sx = (ev.clientX - rect.left) * (W / rect.width);
+      var i = Math.floor((sx - ml) / band);
+      if (i < 0 || i >= pts.length) { $("tooltip").hidden = true; return; }
+      var p = pts[i], lines = ["<b>" + p.full + "</b>"];
+      lines.push(p.value != null ? nf1.format(p.value) + " " + M.unit + (view.period === "year" ? " (medie din " + p.avgOf + " zile)" : "") : (p.future ? "încă nu a venit" : "nenotat"));
+      if (S.kaizen) lines.push("Ținta Kaizen: " + nf1.format(S.kaizen[i]));
+      var tip = $("tooltip");
+      tip.innerHTML = lines.join("<br>");
+      tip.hidden = false;
+      var px = cx(i) * (rect.width / W), py = y(Math.max(p.value || 0, S.kaizen ? S.kaizen[i] : 0)) * (rect.height / H);
+      tip.style.left = Math.min(Math.max(px, 90), rect.width - 90) + "px";
+      tip.style.top = (py - 8) + "px";
+    };
+    chart.onpointerleave = function () { $("tooltip").hidden = true; };
+
+    $("table").innerHTML = "<thead><tr><th>" + (view.period === "year" ? "Luna" : "Ziua") + '</th><th class="num">' + cap(M.name) + "</th>" +
+      (S.kaizen ? '<th class="num">Ținta Kaizen</th>' : "") + "</tr></thead><tbody>" +
+      pts.map(function (p, i) {
+        return "<tr><td>" + p.full + '</td><td class="num">' + (p.value != null ? nf1.format(p.value) : "–") + "</td>" +
+          (S.kaizen ? '<td class="num">' + nf1.format(S.kaizen[i]) + "</td>" : "") + "</tr>";
+      }).join("") + "</tbody>";
+  }
+
+  function renderHistory() {
+    var keys = Object.keys(data).sort().reverse().slice(0, 10);
+    $("history").innerHTML = keys.length ? keys.map(function (k) {
+      var e = data[k], d = parse(k);
+      var parts = ["<strong>" + countWord(e.pages || 0, "o pagină", "pagini") + "</strong>"];
+      parts.push(e.workouts && e.workouts.length ? e.workouts.join(", ").toLowerCase() + (e.minutes ? " " + e.minutes + " min" : "") : (e.minutes ? e.minutes + " min mișcare" : "fără antrenament"));
+      if (e.mood) parts.push(MOODS[e.mood - 1].toLowerCase());
+      return '<li><div class="h-date"><b>' + d.getDate() + " " + MONTHS_SHORT[d.getMonth()] + "</b><small>" + DAYS[dow(d)] + "</small></div>" +
+        '<div class="h-body">' + parts.join(" · ") + (e.example ? '<span class="tag">exemplu</span>' : "") + (e.note ? "<br>" + esc(e.note) : "") + "</div>" +
+        '<div class="h-actions"><button class="small-btn" type="button" data-edit="' + k + '">Editează</button>' +
+        '<button class="small-btn danger" type="button" data-del="' + k + '" aria-label="Șterge ziua ' + d.getDate() + " " + MONTHS[d.getMonth()] + '">Șterge</button></div></li>';
+    }).join("") : '<li><p class="empty">Nicio zi notată încă. Completează jurnalul de mai sus.</p></li>';
+  }
+
+  function renderAll() {
+    $("streak").textContent = streak();
+    $("example-banner").hidden = !Object.keys(data).some(function (k) { return data[k].example; });
+    renderTargets(); renderInsights(); renderCards(); renderChart(); renderHistory();
+  }
+
+  function showToast(text, undo) {
+    undoState = undo;
+    $("toast-text").textContent = text;
+    $("undo").hidden = !undo;
+    $("toast").hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { $("toast").hidden = true; undoState = null; }, 5000);
+  }
+
+  // ---------- evenimente ----------
+  buildForm();
+  document.querySelectorAll(".step-btn").forEach(function (b) {
+    b.addEventListener("click", function () {
+      $("pages").value = Math.max(0, (parseInt($("pages").value, 10) || 0) + Number(b.dataset.step));
+    });
+  });
+  $("workouts").addEventListener("click", function (e) {
+    var c = e.target.closest(".chip"); if (!c) return;
+    c.setAttribute("aria-pressed", String(c.getAttribute("aria-pressed") !== "true"));
+  });
+  $("date").addEventListener("change", function () { if ($("date").value) fillForm($("date").value); });
+
+  $("form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var k = $("date").value || iso(today);
+    var mood = document.querySelector('input[name="mood"]:checked');
+    data[k] = {
+      pages: Math.max(0, parseInt($("pages").value, 10) || 0),
+      workouts: Array.prototype.filter.call(document.querySelectorAll("#workouts .chip"), function (c) { return c.getAttribute("aria-pressed") === "true"; })
+        .map(function (c) { return c.dataset.w; }),
+      minutes: Math.max(0, parseInt($("minutes").value, 10) || 0),
+      mood: mood ? Number(mood.value) : null,
+      note: $("note").value.trim()
+    };
+    save(); renderAll();
+    var d = parse(k);
+    $("saved").textContent = "Salvat pentru " + DAYS[dow(d)] + ", " + d.getDate() + " " + MONTHS[d.getMonth()] + ".";
+  });
+
+  $("history").addEventListener("click", function (e) {
+    var ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]");
+    if (ed) { fillForm(ed.dataset.edit); $("day-title").scrollIntoView({ behavior: "smooth", block: "start" }); $("pages").focus({ preventScroll: true }); }
+    if (del) {
+      var k = del.dataset.del, old = data[k];
+      delete data[k]; save(); renderAll();
+      showToast("Ziua a fost ștearsă.", function () { data[k] = old; });
+    }
+  });
+  $("undo").addEventListener("click", function () {
+    if (!undoState) return;
+    undoState(); undoState = null; save(); renderAll(); fillForm($("date").value || iso(today));
+    $("toast").hidden = true;
+  });
+  $("clear-examples").addEventListener("click", function () {
+    var backup = Object.assign({}, data);
+    Object.keys(data).forEach(function (k) { if (data[k].example) delete data[k]; });
+    save(); renderAll(); fillForm($("date").value || iso(today));
+    showToast("Exemplele au fost șterse.", function () { data = backup; });
+  });
+  document.querySelectorAll(".tabs button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      view.period = b.dataset.period;
+      document.querySelectorAll(".tabs button").forEach(function (o) { o.setAttribute("aria-selected", String(o === b)); });
+      renderInsights(); renderCards(); renderChart();
+    });
+  });
+  $("metric").addEventListener("change", function () { view.metric = $("metric").value; renderChart(); });
+  var resizeTimer;
+  window.addEventListener("resize", function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(renderChart, 120); });
+
+  fillForm(iso(today));
+  renderAll();
+})();
+</script>
+</body>
+</html>
