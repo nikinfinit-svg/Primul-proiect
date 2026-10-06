@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bugetul Lunii</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: o coloană de registru — rezumatul lunii sus, apoi formularul și categoriile alături, apoi lista de tranzacții. */
+:root {
+  --bg: #eef2f4;
+  --surface: #ffffff;
+  --ink: #15232e;
+  --muted: #5b6b76;
+  --line: #d5dee3;
+  --accent: #1f5c7a;
+  --accent-soft: #dcebf2;
+  --in: #1f7a4d;
+  --out: #b23a3a;
+  --in-soft: #e0f1e8;
+  --out-soft: #f7e3e3;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --font-num: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --radius: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f171d; --surface: #17222a; --ink: #e4ecf0; --muted: #93a4ae; --line: #2a3a45;
+    --accent: #7cc0dd; --accent-soft: #1d3542; --in: #6fcf9b; --out: #ef8a8a;
+    --in-soft: #183327; --out-soft: #3a1f22; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f171d; --surface: #17222a; --ink: #e4ecf0; --muted: #93a4ae; --line: #2a3a45;
+  --accent: #7cc0dd; --accent-soft: #1d3542; --in: #6fcf9b; --out: #ef8a8a;
+  --in-soft: #183327; --out-soft: #3a1f22; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 var(--font-body);
+  padding-inline: 16px;
+  padding-block: 24px 48px;
+}
+.wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 20px; }
+h1, h2 { font-family: var(--font-display); margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(1.7rem, 4vw, 2.3rem); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.1rem; font-weight: 700; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+.month-nav { display: flex; align-items: center; gap: 6px; }
+.month-nav output { min-width: 150px; text-align: center; font-family: var(--font-display); font-weight: 500; font-size: 1.1rem; }
+
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--surface);
+  display: grid; place-items: center; font-size: 1.1rem; line-height: 1;
+}
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.banner {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--accent-soft); border-radius: var(--radius); padding: 10px 14px; font-size: 0.92rem;
+}
+.link-btn { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Rezumat */
+.summary {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 20px; display: grid; gap: 16px;
+}
+.figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.fig { display: grid; gap: 2px; min-width: 0; }
+.fig .value { font-size: clamp(1.05rem, 3.2vw, 1.6rem); font-weight: 600; overflow-wrap: anywhere; }
+.fig.balance .value { font-family: var(--font-display); font-size: clamp(1.4rem, 5vw, 2.3rem); font-weight: 700; }
+.pos { color: var(--in); } .neg { color: var(--out); }
+.meter { display: grid; gap: 6px; }
+.meter-track { height: 10px; border-radius: 99px; background: var(--in-soft); overflow: hidden; }
+.meter-fill { height: 100%; background: var(--out); border-radius: 99px; transition: width .4s ease; }
+.meter-caption { font-size: 0.85rem; color: var(--muted); }
+
+.grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; display: grid; gap: 14px; min-width: 0; }
+
+/* Formular */
+form { display: grid; gap: 12px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { text-align: center; padding: 8px; cursor: pointer; font-weight: 600; color: var(--muted); }
+.seg input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: -2px; }
+#t-out:checked + label { background: var(--out-soft); color: var(--out); }
+#t-in:checked + label { background: var(--in-soft); color: var(--in); }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field input, .field select {
+  width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg);
+}
+.field input:focus, .field select:focus { border-color: var(--accent); outline: none; }
+.amount-wrap { position: relative; }
+.amount-wrap input { padding-right: 42px; font-family: var(--font-num); }
+.amount-wrap span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.85rem; }
+.primary {
+  background: var(--accent); color: var(--surface); border: 0; border-radius: 8px; padding: 10px 14px; font-weight: 600;
+}
+.primary:hover { filter: brightness(1.08); }
+.error { color: var(--out); font-size: 0.85rem; min-height: 1.2em; margin: 0; }
+
+/* Categorii */
+.cats { display: grid; gap: 10px; list-style: none; margin: 0; padding: 0; }
+.cat { display: grid; gap: 4px; }
+.cat-head { display: flex; justify-content: space-between; gap: 8px; font-size: 0.92rem; }
+.cat-head .num { color: var(--muted); }
+.bar { height: 8px; background: var(--bg); border-radius: 99px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s ease; }
+.empty { color: var(--muted); font-size: 0.92rem; margin: 0; }
+
+/* Tranzacții */
+.tx-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.filter { display: flex; gap: 4px; }
+.chip {
+  border: 1px solid var(--line); background: var(--bg); border-radius: 99px; padding: 4px 12px; font-size: 0.85rem; color: var(--muted);
+}
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.tx { list-style: none; margin: 0; padding: 0; display: grid; }
+.tx li {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr) auto 32px; gap: 12px; align-items: center;
+  padding: 10px 0; border-top: 1px solid var(--line);
+}
+.tx li:first-child { border-top: 0; }
+.date { text-align: center; line-height: 1.1; }
+.date b { display: block; font-family: var(--font-display); font-size: 1.25rem; }
+.date small { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.desc { min-width: 0; }
+.desc strong { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.desc small { color: var(--muted); }
+.tag { display: inline-block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 1px 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); margin-left: 6px; vertical-align: 1px; }
+.amt { font-weight: 600; white-space: nowrap; }
+.del { width: 32px; height: 32px; border-radius: 6px; border: 0; background: none; color: var(--muted); font-size: 1.1rem; }
+.del:hover { background: var(--out-soft); color: var(--out); }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px;
+  display: flex; gap: 14px; align-items: center; font-size: 0.92rem; max-width: calc(100% - 32px);
+}
+.toast button { background: none; border: 0; color: var(--accent-soft); font-weight: 600; text-decoration: underline; padding: 0; }
+
+@media (max-width: 720px) {
+  .grid-2 { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 460px) {
+  .figures { grid-template-columns: 1fr 1fr; }
+  .fig.balance { grid-column: 1 / -1; order: -1; }
+  .tx li { grid-template-columns: 44px minmax(0, 1fr) auto 28px; gap: 8px; }
+  .month-nav output { min-width: 120px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="label">Buget personal</div>
+      <h1>Bugetul lunii</h1>
+    </div>
+    <div class="month-nav">
+      <button class="icon-btn" id="prev" type="button" aria-label="Luna anterioară">‹</button>
+      <output id="month-label" aria-live="polite"></output>
+      <button class="icon-btn" id="next" type="button" aria-label="Luna următoare">›</button>
+    </div>
+  </header>
+
+  <div class="banner" id="example-banner" hidden>
+    <span>Tranzacțiile marcate „exemplu” sunt date demonstrative, ca să vezi cum arată aplicația.</span>
+    <button class="link-btn" id="clear-examples" type="button">Șterge exemplele</button>
+  </div>
+
+  <section class="summary" aria-label="Rezumatul lunii">
+    <div class="figures">
+      <div class="fig balance"><span class="label">Sold</span><span class="value num" id="balance"></span></div>
+      <div class="fig"><span class="label">Venituri</span><span class="value num pos" id="income"></span></div>
+      <div class="fig"><span class="label">Cheltuieli</span><span class="value num neg" id="expense"></span></div>
+    </div>
+    <div class="meter">
+      <div class="meter-track"><div class="meter-fill" id="meter"></div></div>
+      <div class="meter-caption" id="meter-caption"></div>
+    </div>
+  </section>
+
+  <div class="grid-2">
+    <section class="panel" aria-labelledby="add-title">
+      <h2 id="add-title">Adaugă o tranzacție</h2>
+      <form id="form" novalidate>
+        <div class="seg" role="radiogroup" aria-label="Tip">
+          <input type="radio" name="type" id="t-out" value="out" checked><label for="t-out">Cheltuială</label>
+          <input type="radio" name="type" id="t-in" value="in"><label for="t-in">Venit</label>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label class="label" for="amount">Sumă</label>
+            <div class="amount-wrap"><input id="amount" inputmode="decimal" placeholder="0,00" autocomplete="off"><span>lei</span></div>
+          </div>
+          <div class="field">
+            <label class="label" for="date">Data</label>
+            <input id="date" type="date">
+          </div>
+        </div>
+        <div class="field">
+          <label class="label" for="category">Categorie</label>
+          <select id="category"></select>
+        </div>
+        <div class="field">
+          <label class="label" for="note">Descriere</label>
+          <input id="note" placeholder="ex. Kaufland, factură Enel" maxlength="80" autocomplete="off">
+        </div>
+        <p class="error" id="error" role="alert"></p>
+        <button class="primary" type="submit">Adaugă</button>
+      </form>
+    </section>
+
+    <section class="panel" aria-labelledby="cat-title">
+      <h2 id="cat-title">Unde s-au dus banii</h2>
+      <ul class="cats" id="cats"></ul>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="tx-title">
+    <div class="tx-head">
+      <h2 id="tx-title">Tranzacții</h2>
+      <div class="filter" role="group" aria-label="Filtru">
+        <button class="chip" type="button" data-filter="all" aria-pressed="true">Toate</button>
+        <button class="chip" type="button" data-filter="in" aria-pressed="false">Venituri</button>
+        <button class="chip" type="button" data-filter="out" aria-pressed="false">Cheltuieli</button>
+      </div>
+    </div>
+    <ul class="tx" id="tx"></ul>
+  </section>
+</div>
+
+<div class="toast" id="toast" hidden><span id="toast-text"></span><button type="button" id="undo">Anulează</button></div>
+
+<script>
+(function () {
+  var STORE_KEY = "buget-personal-v1";
+  var CATEGORIES = {
+    out: ["Chirie / rată", "Utilități", "Mâncare", "Transport", "Sănătate", "Ieșiri în oraș", "Haine", "Abonamente", "Altele"],
+    in: ["Salariu", "Freelance", "Cadouri", "Altele"]
+  };
+  var MONTHS = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
+  var MONTHS_SHORT = ["ian", "feb", "mar", "apr", "mai", "iun", "iul", "aug", "sep", "oct", "noi", "dec"];
+  var money = new Intl.NumberFormat("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function fmt(n) { return money.format(n) + " lei"; }
+
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function isoDate(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  var today = new Date();
+
+  function sampleData() {
+    var y = today.getFullYear(), m = today.getMonth();
+    var maxDay = today.getDate();
+    function day(d) { return isoDate(new Date(y, m, Math.min(d, maxDay))); }
+    var rows = [
+      ["in", 6200, "Salariu", "Salariu net", 1],
+      ["out", 1800, "Chirie / rată", "Chirie apartament", 1],
+      ["out", 245.6, "Utilități", "Factură curent", 3],
+      ["out", 412.35, "Mâncare", "Cumpărături săptămâna 1", 4],
+      ["out", 80, "Transport", "Abonament STB", 2],
+      ["out", 54.99, "Abonamente", "Internet + TV", 5],
+      ["out", 160, "Ieșiri în oraș", "Cină cu prietenii", 6],
+      ["in", 900, "Freelance", "Proiect logo", 6],
+      ["out", 298.4, "Mâncare", "Cumpărături săptămâna 2", 7]
+    ];
+    return rows.map(function (r, i) {
+      return { id: "ex" + i, type: r[0], amount: r[1], category: r[2], note: r[3], date: day(r[4]), example: true };
+    });
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return sampleData();
+  }
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  var state = load();
+  var view = { y: today.getFullYear(), m: today.getMonth(), filter: "all" };
+  var lastDeleted = null, toastTimer = null;
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function fillCategories() {
+    var type = document.querySelector('input[name="type"]:checked').value;
+    $("category").innerHTML = CATEGORIES[type].map(function (c) { return "<option>" + c + "</option>"; }).join("");
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; });
+  }
+
+  function render() {
+    var key = view.y + "-" + pad(view.m + 1);
+    $("month-label").textContent = MONTHS[view.m] + " " + view.y;
+    var rows = state.filter(function (t) { return t.date.slice(0, 7) === key; });
+
+    var inc = 0, exp = 0, byCat = {};
+    rows.forEach(function (t) {
+      if (t.type === "in") inc += t.amount;
+      else { exp += t.amount; byCat[t.category] = (byCat[t.category] || 0) + t.amount; }
+    });
+    var bal = inc - exp;
+    $("income").textContent = fmt(inc);
+    $("expense").textContent = fmt(exp);
+    $("balance").textContent = (bal < 0 ? "−" : "") + fmt(Math.abs(bal));
+    $("balance").className = "value num " + (bal < 0 ? "neg" : "pos");
+
+    var pct = inc > 0 ? Math.min(100, (exp / inc) * 100) : (exp > 0 ? 100 : 0);
+    $("meter").style.width = pct + "%";
+    $("meter-caption").textContent = inc > 0
+      ? "Ai cheltuit " + Math.round((exp / inc) * 100) + "% din venituri" + (exp > inc ? ", peste ce ai încasat." : ".")
+      : (exp > 0 ? "Nu ai venituri înregistrate luna aceasta." : "Nicio tranzacție luna aceasta.");
+
+    var cats = Object.keys(byCat).sort(function (a, b) { return byCat[b] - byCat[a]; });
+    $("cats").innerHTML = cats.length ? cats.map(function (c) {
+      var p = exp ? (byCat[c] / exp) * 100 : 0;
+      return '<li class="cat"><div class="cat-head"><span>' + esc(c) + '</span><span class="num">' + fmt(byCat[c]) +
+        " · " + Math.round(p) + '%</span></div><div class="bar"><i style="width:' + p.toFixed(1) + '%"></i></div></li>';
+    }).join("") : '<li><p class="empty">Nicio cheltuială în ' + MONTHS[view.m] + ".</p></li>";
+
+    var list = rows.filter(function (t) { return view.filter === "all" || t.type === view.filter; })
+      .sort(function (a, b) { return b.date.localeCompare(a.date) || (b.id > a.id ? 1 : -1); });
+    $("tx").innerHTML = list.length ? list.map(function (t) {
+      var d = Number(t.date.slice(8, 10)), mo = Number(t.date.slice(5, 7)) - 1;
+      var sign = t.type === "in" ? "+" : "−";
+      return '<li><div class="date"><b>' + d + "</b><small>" + MONTHS_SHORT[mo] + "</small></div>" +
+        '<div class="desc"><strong>' + esc(t.note || t.category) + (t.example ? '<span class="tag">exemplu</span>' : "") +
+        "</strong><small>" + esc(t.category) + "</small></div>" +
+        '<span class="amt num ' + (t.type === "in" ? "pos" : "neg") + '">' + sign + fmt(t.amount) + "</span>" +
+        '<button class="del" type="button" data-id="' + esc(t.id) + '" aria-label="Șterge ' + esc(t.note || t.category) + '">×</button></li>';
+    }).join("") : '<li style="display:block"><p class="empty">Nicio tranzacție de afișat. Adaug-o pe prima din formularul de mai sus.</p></li>';
+
+    $("example-banner").hidden = !state.some(function (t) { return t.example; });
+  }
+
+  function parseAmount(s) {
+    s = String(s).trim().replace(/\s/g, "");
+    if (/,\d{1,2}$/.test(s)) s = s.replace(/\./g, "").replace(",", ".");
+    else s = s.replace(/,/g, "");
+    var n = Number(s);
+    return isFinite(n) ? Math.round(n * 100) / 100 : NaN;
+  }
+
+  function showToast(text) {
+    $("toast-text").textContent = text;
+    $("toast").hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { $("toast").hidden = true; lastDeleted = null; }, 5000);
+  }
+
+  // Evenimente
+  document.querySelectorAll('input[name="type"]').forEach(function (r) { r.addEventListener("change", fillCategories); });
+
+  $("form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var amount = parseAmount($("amount").value);
+    if (!(amount > 0)) { $("error").textContent = "Scrie o sumă mai mare ca zero, de exemplu 125,50."; $("amount").focus(); return; }
+    if (!$("date").value) { $("error").textContent = "Alege data tranzacției."; $("date").focus(); return; }
+    $("error").textContent = "";
+    var t = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      type: document.querySelector('input[name="type"]:checked').value,
+      amount: amount,
+      category: $("category").value,
+      note: $("note").value.trim(),
+      date: $("date").value
+    };
+    state.push(t);
+    save();
+    var d = new Date(t.date + "T00:00");
+    view.y = d.getFullYear(); view.m = d.getMonth();
+    $("amount").value = ""; $("note").value = "";
+    render();
+    $("amount").focus();
+  });
+
+  $("tx").addEventListener("click", function (e) {
+    var btn = e.target.closest(".del");
+    if (!btn) return;
+    var i = state.findIndex(function (t) { return t.id === btn.dataset.id; });
+    if (i < 0) return;
+    lastDeleted = { item: state[i], index: i };
+    state.splice(i, 1);
+    save(); render();
+    showToast("Tranzacție ștearsă.");
+  });
+
+  $("undo").addEventListener("click", function () {
+    if (!lastDeleted) return;
+    if (Array.isArray(lastDeleted)) state = lastDeleted;
+    else state.splice(lastDeleted.index, 0, lastDeleted.item);
+    lastDeleted = null;
+    save(); render();
+    $("toast").hidden = true;
+  });
+
+  $("clear-examples").addEventListener("click", function () {
+    lastDeleted = state.slice();
+    state = state.filter(function (t) { return !t.example; });
+    save(); render();
+    showToast("Exemplele au fost șterse.");
+  });
+
+  document.querySelectorAll(".chip").forEach(function (c) {
+    c.addEventListener("click", function () {
+      view.filter = c.dataset.filter;
+      document.querySelectorAll(".chip").forEach(function (o) { o.setAttribute("aria-pressed", String(o === c)); });
+      render();
+    });
+  });
+
+  $("prev").addEventListener("click", function () { view.m--; if (view.m < 0) { view.m = 11; view.y--; } render(); });
+  $("next").addEventListener("click", function () { view.m++; if (view.m > 11) { view.m = 0; view.y++; } render(); });
+
+  $("date").value = isoDate(today);
+  fillCategories();
+  render();
+})();
+</script>
+</body>
+</html>
