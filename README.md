@@ -19,7 +19,8 @@ La prima deschidere apar câteva tranzacții de exemplu, pe care le poți șterg
 Jurnal zilnic simplu, pe principiul Kaizen: 1% mai bine în fiecare zi.
 Deschide `kaizen/index.html` direct în browser.
 
-- Notezi câte pagini ai citit, ce antrenament ai făcut (și câte minute) și cum te simți, de la 1 la 5
+- Notezi câte pagini ai citit, ce sport ai făcut (handbal, meci, alergare, sală etc.) și câte minute, și cum te simți, de la 1 la 5
+- La „Meci” apare un program special de meci: pregătire, încălzire, ce faci în timpul meciului și refacere, plus nota pentru cum ai jucat și golurile marcate
 - Ținta de azi: media ultimelor 7 zile plus 1%
 - „Cum stai”: comparații pe săptămână, lună și an, cu săgeți în sus sau în jos
 - Un grafic cu fiecare zi și linia țintei Kaizen

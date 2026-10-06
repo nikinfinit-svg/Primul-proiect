@@ -19,6 +19,7 @@
   --accent: #008570;
   --accent-soft: #d3e5dd;
   --kaizen: #bd6420;
+  --match-soft: #efe2d2;
   --good: #2f7a4c;
   --bad: #ad4b3b;
   --font: "Nunito", "Segoe UI", system-ui, sans-serif;
@@ -28,12 +29,12 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #1b2220; --surface: #232b28; --ink: #dfe6e1; --ink-2: #b3beb8; --muted: #8a958f; --line: #333d39;
-    --accent: #2a9c84; --accent-soft: #29403a; --kaizen: #c97330; --good: #7cc896; --bad: #e59484; color-scheme: dark;
+    --accent: #2a9c84; --accent-soft: #29403a; --kaizen: #c97330; --match-soft: #3a2f24; --good: #7cc896; --bad: #e59484; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #1b2220; --surface: #232b28; --ink: #dfe6e1; --ink-2: #b3beb8; --muted: #8a958f; --line: #333d39;
-  --accent: #2a9c84; --accent-soft: #29403a; --kaizen: #c97330; --good: #7cc896; --bad: #e59484; color-scheme: dark;
+  --accent: #2a9c84; --accent-soft: #29403a; --kaizen: #c97330; --match-soft: #3a2f24; --good: #7cc896; --bad: #e59484; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -85,6 +86,29 @@ form { display: grid; gap: 18px; }
 .primary { border: 0; border-radius: 12px; background: var(--accent); color: var(--surface); padding: 11px 22px; font-weight: 800; }
 .primary:hover { filter: brightness(1.07); }
 .saved { color: var(--good); font-size: 0.92rem; }
+
+/* Program de meci */
+.chip[data-w="Meci"] { font-weight: 800; }
+.chip[data-w="Meci"][aria-pressed="true"] { background: var(--kaizen); }
+.match { background: var(--match-soft); border-radius: 14px; padding: 16px; display: grid; gap: 14px; }
+.match-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.match-head b { font-size: 1.05rem; }
+.match-head .num { color: var(--kaizen); font-weight: 800; }
+.match-bar { height: 6px; border-radius: 99px; background: var(--surface); overflow: hidden; }
+.match-bar i { display: block; height: 100%; background: var(--kaizen); border-radius: 99px; transition: width .3s ease; }
+#match-steps { display: grid; gap: 14px; }
+.phase { display: grid; gap: 6px; }
+.phase h3 { margin: 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2); }
+.check { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; align-items: start; font-size: 0.95rem; cursor: pointer; }
+.check input { width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--kaizen); }
+.check input:checked + span { color: var(--muted); text-decoration: line-through; }
+.play { display: flex; gap: 6px; }
+.play input { position: absolute; opacity: 0; pointer-events: none; }
+.play label { flex: 1; display: grid; place-items: center; height: 40px; border-radius: 10px; background: var(--surface); font-weight: 800; color: var(--ink-2); cursor: pointer; }
+.play input:checked + label { background: var(--kaizen); color: var(--surface); }
+.play input:focus-visible + label { outline: 2px solid var(--kaizen); outline-offset: 2px; }
+.goals-in { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 0.95rem; }
+.goals-in input { width: 60px; padding: 5px 8px; border: 0; border-radius: 10px; background: var(--surface); text-align: center; }
 
 /* Ținta */
 .goals { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -151,9 +175,23 @@ form { display: grid; gap: 18px; }
         </div>
 
         <div class="q">
-          <span>Ce antrenament ai făcut?</span>
+          <span>Ce sport ai făcut?</span>
           <div class="chips" id="workouts"></div>
           <label class="minutes" for="minutes"><input id="minutes" type="number" min="0" max="600" inputmode="numeric" value="0"> minute</label>
+        </div>
+
+        <div class="match" id="match" hidden aria-labelledby="match-title">
+          <div class="match-head">
+            <b id="match-title">Program de meci</b>
+            <span class="muted"><span class="num" id="match-count">0</span> pași bifați</span>
+          </div>
+          <div class="match-bar"><i id="match-bar" style="width:0"></i></div>
+          <div id="match-steps"></div>
+          <div class="phase">
+            <h3 id="play-title">După meci: cum ai jucat?</h3>
+            <div class="play" id="play" role="radiogroup" aria-labelledby="play-title"></div>
+          </div>
+          <label class="goals-in" for="match-goals">Goluri marcate <input id="match-goals" type="number" min="0" max="50" inputmode="numeric" value="0"></label>
         </div>
 
         <div class="q">
@@ -207,7 +245,34 @@ form { display: grid; gap: 18px; }
 <script>
 (function () {
   var KEY = "kaizen-v1";
-  var WORKOUTS = ["Alergare", "Sală", "Acasă", "Yoga", "Plimbare", "Altul"];
+  var WORKOUTS = ["Handbal", "Meci", "Alergare", "Sală", "Acasă", "Yoga", "Plimbare", "Altul"];
+  // Programul pentru ziua de meci: pregătire, încălzire, în timpul meciului, refacere
+  var MATCH_PLAN = [
+    { title: "Înainte de meci", steps: [
+      ["somn", "Am dormit 7–9 ore"],
+      ["masa", "Masă cu carbohidrați cu 3–4 ore înainte (paste, orez, pui)"],
+      ["apa", "Am băut o jumătate de litru de apă cu 2 ore înainte"],
+      ["gustare", "Gustare ușoară cu o oră înainte (o banană)"],
+      ["echipament", "Echipament gata: încălțări, apă, prosop"],
+      ["focus", "Mi-am ales 2 lucruri pe care vreau să le fac bine azi"]
+    ] },
+    { title: "Încălzire, 20–25 de minute", steps: [
+      ["alergare", "5 minute de alergare ușoară"],
+      ["mobilitate", "Mobilitate: fandări, rotații de șold și de umeri"],
+      ["sprint", "Accelerări scurte și schimbări de direcție"],
+      ["pase", "Pase în doi, tot mai rapide"],
+      ["aruncari", "Aruncări la poartă, de la ușor la tare"]
+    ] },
+    { title: "În timpul meciului", steps: [
+      ["hidratare", "Apă la fiecare pauză"],
+      ["comunicare", "Am vorbit cu echipa în apărare"]
+    ] },
+    { title: "După meci", steps: [
+      ["revenire", "5–10 minute de alergare ușoară și stretching"],
+      ["refacere", "Masă cu proteine în primele 2 ore"]
+    ] }
+  ];
+  var MATCH_TOTAL = MATCH_PLAN.reduce(function (n, p) { return n + p.steps.length; }, 0);
   var MOODS = ["Foarte rău", "Rău", "Normal", "Bine", "Foarte bine"];
   var DAYS = ["luni", "marți", "miercuri", "joi", "vineri", "sâmbătă", "duminică"];
   var DAYS_SHORT = ["L", "Ma", "Mi", "J", "V", "S", "D"];
@@ -249,12 +314,18 @@ form { display: grid; gap: 18px; }
       if (rnd() < 0.12) continue;
       var trained = rnd() < 0.35 + 0.35 * t;
       var mood = Math.round(2.5 + 1.7 * t + (rnd() - 0.5) * 2.2 + (trained ? 0.4 : 0));
-      out[iso(addDays(today, -i))] = {
+      var day = addDays(today, -i), matchDay = dow(day) === 5;
+      out[iso(day)] = {
         pages: Math.max(0, Math.round(6 + 16 * t + (rnd() - 0.5) * 14)),
-        workouts: trained ? [WORKOUTS[Math.floor(rnd() * 4)]] : [],
-        minutes: trained ? 20 + Math.round(rnd() * 8) * 5 : 0,
+        workouts: matchDay ? ["Meci"] : trained ? [["Handbal", "Handbal", "Alergare", "Sală"][Math.floor(rnd() * 4)]] : [],
+        minutes: matchDay ? 60 : trained ? 20 + Math.round(rnd() * 8) * 5 : 0,
         mood: Math.min(5, Math.max(1, mood)),
         example: true
+      };
+      if (matchDay) out[iso(day)].match = {
+        done: ["somn", "masa", "apa", "echipament", "alergare", "mobilitate", "pase", "aruncari"].filter(function () { return rnd() < 0.5 + 0.4 * t; }),
+        play: Math.min(5, Math.max(1, Math.round(2.6 + 1.6 * t + (rnd() - 0.5) * 2))),
+        goals: Math.floor(rnd() * (2 + 4 * t))
       };
     }
     return out;
@@ -297,6 +368,14 @@ form { display: grid; gap: 18px; }
     if (Math.abs(cur - prev) < 1e-9) return "same";
     return cur > prev ? "up" : "down";
   }
+  function matches(r) {
+    var list = entriesIn(r).filter(function (e) { return e.match; });
+    return {
+      n: list.length,
+      play: avg(list.map(function (e) { return e.match.play; }).filter(Boolean)),
+      goals: list.reduce(function (g, e) { return g + (e.match.goals || 0); }, 0)
+    };
+  }
   function streak() {
     var d = data[iso(today)] ? today : addDays(today, -1), n = 0;
     while (data[iso(d)]) { n++; d = addDays(d, -1); }
@@ -311,6 +390,23 @@ form { display: grid; gap: 18px; }
     return '<input type="radio" name="mood" id="mood-' + (i + 1) + '" value="' + (i + 1) + '"><label for="mood-' + (i + 1) + '" title="' + m + '">' + (i + 1) + "</label>";
   }).join("");
 
+  $("match-steps").innerHTML = MATCH_PLAN.map(function (p) {
+    return '<div class="phase"><h3>' + p.title + "</h3>" + p.steps.map(function (st) {
+      return '<label class="check" for="m-' + st[0] + '"><input type="checkbox" id="m-' + st[0] + '" data-step="' + st[0] + '"><span>' + st[1] + "</span></label>";
+    }).join("") + "</div>";
+  }).join("");
+  $("play").innerHTML = [1, 2, 3, 4, 5].map(function (n) {
+    return '<input type="radio" name="play" id="play-' + n + '" value="' + n + '"><label for="play-' + n + '">' + n + "</label>";
+  }).join("");
+
+  function isMatch() { return document.querySelector('#workouts .chip[data-w="Meci"]').getAttribute("aria-pressed") === "true"; }
+  function updateMatch() {
+    $("match").hidden = !isMatch();
+    var n = document.querySelectorAll("#match-steps input:checked").length;
+    $("match-count").textContent = n + " din " + MATCH_TOTAL;
+    $("match-bar").style.width = (n / MATCH_TOTAL * 100) + "%";
+  }
+
   function fillForm(k) {
     var e = data[k] || {};
     $("date").value = k;
@@ -320,6 +416,11 @@ form { display: grid; gap: 18px; }
       c.setAttribute("aria-pressed", String((e.workouts || []).indexOf(c.dataset.w) >= 0));
     });
     document.querySelectorAll('input[name="mood"]').forEach(function (r) { r.checked = Number(r.value) === e.mood; });
+    var m = e.match || {};
+    document.querySelectorAll("#match-steps input").forEach(function (c) { c.checked = (m.done || []).indexOf(c.dataset.step) >= 0; });
+    document.querySelectorAll('input[name="play"]').forEach(function (r) { r.checked = Number(r.value) === m.play; });
+    $("match-goals").value = m.goals || 0;
+    updateMatch();
     $("saved").textContent = "";
   }
 
@@ -348,6 +449,14 @@ form { display: grid; gap: 18px; }
       rows.push([direction(cur.trainRate, prev.trainRate),
         "Te-ai antrenat <b>" + cur.trained + " din " + cur.n + (cur.n === 1 ? " zi" : " zile") + "</b>." +
         (prev.n ? " " + cap(P.prev) + ": " + prev.trained + " din " + prev.n + "." : "")]);
+    }
+    var curM = matches(range(view.period, 0)), prevM = matches(range(view.period, -1));
+    if (curM.n) {
+      rows.push([direction(curM.play, prevM.play),
+        "Ai jucat <b>" + (curM.n === 1 ? "un meci" : curM.n + " " + de(curM.n) + "meciuri") + "</b>" +
+        (curM.play != null ? ", cu nota medie " + nf1.format(curM.play) + " din 5" : "") +
+        (curM.goals ? " și ai marcat " + (curM.goals === 1 ? "un gol" : curM.goals + " " + de(curM.goals) + "goluri") : "") + "." +
+        (prevM.play != null ? " " + cap(P.prev) + ": nota " + nf1.format(prevM.play) + "." : "")]);
     }
     if (cur.moodN) {
       rows.push([direction(cur.greatRate, prev.greatRate),
@@ -450,8 +559,9 @@ form { display: grid; gap: 18px; }
     b.addEventListener("click", function () { $("pages").value = Math.max(0, (parseInt($("pages").value, 10) || 0) + Number(b.dataset.step)); });
   });
   $("workouts").addEventListener("click", function (e) {
-    var c = e.target.closest(".chip"); if (c) c.setAttribute("aria-pressed", String(c.getAttribute("aria-pressed") !== "true"));
+    var c = e.target.closest(".chip"); if (c) { c.setAttribute("aria-pressed", String(c.getAttribute("aria-pressed") !== "true")); updateMatch(); }
   });
+  $("match-steps").addEventListener("change", updateMatch);
   $("date").addEventListener("change", function () { if ($("date").value) fillForm($("date").value); });
   $("form").addEventListener("submit", function (ev) {
     ev.preventDefault();
@@ -462,6 +572,14 @@ form { display: grid; gap: 18px; }
       minutes: Math.max(0, parseInt($("minutes").value, 10) || 0),
       mood: mood ? Number(mood.value) : null
     };
+    if (isMatch()) {
+      var play = document.querySelector('input[name="play"]:checked');
+      data[k].match = {
+        done: Array.prototype.map.call(document.querySelectorAll("#match-steps input:checked"), function (c) { return c.dataset.step; }),
+        play: play ? Number(play.value) : null,
+        goals: Math.max(0, parseInt($("match-goals").value, 10) || 0)
+      };
+    }
     save(); renderAll();
     var d = parse(k);
     $("saved").textContent = k === iso(today) ? "Salvat. Bravo pentru azi!" : "Salvat pentru " + DAYS[dow(d)] + ", " + d.getDate() + " " + MONTHS[d.getMonth()] + ".";
