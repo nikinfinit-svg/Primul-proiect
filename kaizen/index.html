@@ -107,6 +107,30 @@ form { display: grid; gap: 18px; }
 .play label { flex: 1; display: grid; place-items: center; height: 40px; border-radius: 10px; background: var(--surface); font-weight: 800; color: var(--ink-2); cursor: pointer; }
 .play input:checked + label { background: var(--kaizen); color: var(--surface); }
 .play input:focus-visible + label { outline: 2px solid var(--kaizen); outline-offset: 2px; }
+/* Jurnal de aruncări */
+.shots { display: grid; gap: 10px; }
+.shot-form { background: var(--surface); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
+.shot-form input[type="text"] { width: 100%; padding: 8px 10px; border: 0; border-radius: 10px; background: var(--bg); }
+.mini { font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+.chips.sm .chip { padding: 4px 10px; font-size: 0.85rem; }
+.chips.sm .chip[aria-pressed="true"] { background: var(--ink-2); color: var(--surface); }
+.chips.players .chip { background: var(--match-soft); }
+.result-btns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.result-btns button { border: 0; border-radius: 10px; padding: 10px 4px; font-weight: 800; color: var(--surface); }
+.result-btns [data-r="parada"] { background: var(--good); }
+.result-btns [data-r="gol"] { background: var(--bad); }
+.result-btns [data-r="ratat"] { background: var(--muted); }
+.result-btns button:hover { filter: brightness(1.08); }
+.shot-msg { font-size: 0.9rem; color: var(--ink-2); min-height: 1.3em; }
+.table-wrap { overflow-x: auto; }
+.stats-table { border-collapse: collapse; width: 100%; font-size: 0.88rem; background: var(--surface); border-radius: 10px; }
+.stats-table th, .stats-table td { padding: 6px 5px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.stats-table th:first-child, .stats-table td:first-child { text-align: left; white-space: normal; }
+.stats-table th { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+.stats-table td small { color: var(--muted); }
+.stats-table tr:last-child td { border-bottom: 0; }
+.shot-tools { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gk input:disabled { opacity: 0.7; }
 .gk { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
 .goals-in { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 0.95rem; }
 .save-pct { font-weight: 800; color: var(--kaizen); }
@@ -201,6 +225,31 @@ form { display: grid; gap: 18px; }
               <span class="save-pct" id="save-pct" aria-live="polite"></span>
             </div>
           </div>
+          <div class="phase shots">
+            <h3>Aruncările adversarilor</h3>
+            <div class="shot-form">
+              <div>
+                <label class="mini" for="shot-name">Jucător</label>
+                <input type="text" id="shot-name" list="shot-names" placeholder="ex. Popescu" autocomplete="off" maxlength="40">
+                <datalist id="shot-names"></datalist>
+              </div>
+              <div class="chips sm players" id="shot-players" aria-label="Jucători din meciul acesta"></div>
+              <div><div class="mini">Post</div><div class="chips sm" id="shot-pos" role="group" aria-label="Post"></div></div>
+              <div><div class="mini">De unde a aruncat</div><div class="chips sm" id="shot-zone" role="group" aria-label="De unde a aruncat"></div></div>
+              <div class="result-btns" id="shot-result">
+                <button type="button" data-r="parada">Paradă</button>
+                <button type="button" data-r="gol">Gol</button>
+                <button type="button" data-r="ratat">Ratat</button>
+              </div>
+            </div>
+            <p class="shot-msg" id="shot-msg" role="status"></p>
+            <div class="table-wrap"><table class="stats-table" id="shot-table"></table></div>
+            <div class="table-wrap"><table class="stats-table" id="zone-table"></table></div>
+            <div class="shot-tools">
+              <span class="muted" id="shot-total"></span>
+              <button type="button" class="link-btn" id="shot-undo" hidden>Șterge ultima aruncare</button>
+            </div>
+          </div>
         </div>
 
         <div class="q">
@@ -283,6 +332,9 @@ form { display: grid; gap: 18px; }
       ["refacere", "Masă cu proteine în primele 2 ore"]
     ] }
   ];
+  var POSITIONS = ["Extremă stânga", "Inter stânga", "Centru", "Inter dreapta", "Extremă dreapta", "Pivot"];
+  var ZONES = ["6 m", "9 m", "Pătrundere", "Extremă", "7 m", "Contraatac"];
+  var RESULTS = { parada: "paradă", gol: "gol", ratat: "ratat" };
   var MATCH_TOTAL = MATCH_PLAN.reduce(function (n, p) { return n + p.steps.length; }, 0);
   var MOODS = ["Foarte rău", "Rău", "Normal", "Bine", "Foarte bine"];
   var DAYS = ["luni", "marți", "miercuri", "joi", "vineri", "sâmbătă", "duminică"];
@@ -427,6 +479,114 @@ form { display: grid; gap: 18px; }
   $("match-saves").addEventListener("input", updateSavePct);
   $("match-conceded").addEventListener("input", updateSavePct);
 
+  // ---------- jurnal de aruncări ----------
+  var shots = [];
+  function escH(x) { return String(x).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function pl(n, one, many) { return n === 1 ? "1 " + one : n + " " + de(n) + many; }
+  function pct(a, b) { return b ? nf0.format(a / b * 100) + "%" : "–"; }
+  function pick(groupId, value) {
+    document.querySelectorAll("#" + groupId + " .chip").forEach(function (c) { c.setAttribute("aria-pressed", String(c.dataset.v === value)); });
+  }
+  function picked(groupId) { var c = document.querySelector("#" + groupId + ' .chip[aria-pressed="true"]'); return c ? c.dataset.v : ""; }
+  $("shot-pos").innerHTML = POSITIONS.map(function (v) { return '<button type="button" class="chip" aria-pressed="false" data-v="' + v + '">' + v + "</button>"; }).join("");
+  $("shot-zone").innerHTML = ZONES.map(function (v) { return '<button type="button" class="chip" aria-pressed="false" data-v="' + v + '">' + v + "</button>"; }).join("");
+  ["shot-pos", "shot-zone"].forEach(function (id) {
+    $(id).addEventListener("click", function (e) {
+      var c = e.target.closest(".chip"); if (!c) return;
+      pick(id, c.getAttribute("aria-pressed") === "true" ? "" : c.dataset.v);
+    });
+  });
+  // Toate aruncările din meciurile salvate, ca să recunoaștem jucătorii
+  function pastShots(exceptKey) {
+    var all = [];
+    Object.keys(data).forEach(function (k) { if (k !== exceptKey && data[k].match && data[k].match.shots) all = all.concat(data[k].match.shots); });
+    return all;
+  }
+  function knownPos(name, list) {
+    for (var i = list.length - 1; i >= 0; i--) if (list[i].p.toLowerCase() === name.toLowerCase() && list[i].pos) return list[i].pos;
+    return "";
+  }
+  function onName() {
+    var name = $("shot-name").value.trim(), k = $("date").value;
+    if (!name) { $("shot-msg").textContent = ""; return; }
+    var past = pastShots(k), pos = knownPos(name, shots) || knownPos(name, past);
+    if (pos) pick("shot-pos", pos);
+    var hist = past.filter(function (x) { return x.p.toLowerCase() === name.toLowerCase(); });
+    if (hist.length) {
+      var hs = hist.filter(function (x) { return x.r === "parada"; }).length, hg = hist.filter(function (x) { return x.r === "gol"; }).length;
+      $("shot-msg").textContent = "În meciurile trecute: " + pl(hist.length, "aruncare", "aruncări") + ", " + pl(hg, "gol", "goluri") + ", " + pl(hs, "paradă", "parade") + ".";
+    } else $("shot-msg").textContent = "";
+  }
+  $("shot-name").addEventListener("input", onName);
+  $("shot-players").addEventListener("click", function (e) {
+    var c = e.target.closest(".chip"); if (!c) return;
+    $("shot-name").value = c.dataset.v; onName();
+  });
+
+  function tally(list) {
+    var t = { n: list.length, gol: 0, parada: 0, ratat: 0 };
+    list.forEach(function (x) { t[x.r]++; });
+    return t;
+  }
+  function renderShots() {
+    var names = [], byName = {};
+    shots.forEach(function (x) {
+      var key = x.p.toLowerCase();
+      if (!byName[key]) { byName[key] = { name: x.p, pos: x.pos, list: [] }; names.push(key); }
+      byName[key].list.push(x);
+      if (x.pos) byName[key].pos = x.pos;
+    });
+    $("shot-players").innerHTML = names.map(function (k) { return '<button type="button" class="chip" data-v="' + escH(byName[k].name) + '">' + escH(byName[k].name) + "</button>"; }).join("");
+    var known = {};
+    pastShots("").concat(shots).forEach(function (x) { known[x.p] = 1; });
+    $("shot-names").innerHTML = Object.keys(known).map(function (n) { return '<option value="' + escH(n) + '">'; }).join("");
+
+    var head = "<thead><tr><th>{0}</th><th>Arunc.</th><th>Gol</th><th>Par.</th><th>Rat.</th><th>% par.</th></tr></thead>";
+    function row(label, t) {
+      return "<tr><td>" + label + "</td><td>" + t.n + "</td><td>" + t.gol + "</td><td>" + t.parada + "</td><td>" + t.ratat + "</td><td>" + pct(t.parada, t.parada + t.gol) + "</td></tr>";
+    }
+    if (!shots.length) {
+      $("shot-table").innerHTML = ""; $("zone-table").innerHTML = "";
+      $("shot-total").textContent = "Nicio aruncare notată încă.";
+      $("shot-undo").hidden = true;
+      $("match-saves").disabled = false; $("match-conceded").disabled = false;
+      return;
+    }
+    names.sort(function (a, b) { return byName[b].list.length - byName[a].list.length; });
+    $("shot-table").innerHTML = head.replace("{0}", "Jucător") + "<tbody>" + names.map(function (k) {
+      var b = byName[k];
+      return row(escH(b.name) + (b.pos ? "<br><small>" + b.pos + "</small>" : ""), tally(b.list));
+    }).join("") + "</tbody>";
+    var zones = ZONES.concat(["Nespecificat"]).filter(function (z) {
+      return shots.some(function (x) { return (x.zone || "Nespecificat") === z; });
+    });
+    $("zone-table").innerHTML = head.replace("{0}", "De unde") + "<tbody>" + zones.map(function (z) {
+      return row(z, tally(shots.filter(function (x) { return (x.zone || "Nespecificat") === z; })));
+    }).join("") + "</tbody>";
+    var t = tally(shots);
+    $("shot-total").textContent = "Până acum: " + pl(t.n, "aruncare", "aruncări") + ", " + pl(t.gol, "gol", "goluri") + ", " + pl(t.parada, "paradă", "parade") + ", " + pl(t.ratat, "ratată", "ratate") + ".";
+    $("shot-undo").hidden = false;
+    // Paradele și golurile primite vin din jurnal
+    $("match-saves").value = t.parada; $("match-conceded").value = t.gol;
+    $("match-saves").disabled = true; $("match-conceded").disabled = true;
+    updateSavePct();
+  }
+  $("shot-result").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-r]"); if (!b) return;
+    var name = $("shot-name").value.trim();
+    if (!name) { $("shot-msg").textContent = "Scrie mai întâi numele jucătorului."; $("shot-name").focus(); return; }
+    var shot = { p: name, pos: picked("shot-pos"), zone: picked("shot-zone"), r: b.dataset.r };
+    shots.push(shot);
+    renderShots();
+    persist();
+    $("shot-msg").textContent = "Notat: " + name + (shot.zone ? ", " + shot.zone : "") + ", " + RESULTS[shot.r] + ".";
+    $("shot-name").value = ""; pick("shot-pos", ""); pick("shot-zone", "");
+  });
+  $("shot-undo").addEventListener("click", function () {
+    var x = shots.pop(); renderShots(); persist();
+    if (x) $("shot-msg").textContent = "Am șters aruncarea lui " + x.p + ".";
+  });
+
   function fillForm(k) {
     var e = data[k] || {};
     $("date").value = k;
@@ -441,6 +601,9 @@ form { display: grid; gap: 18px; }
     document.querySelectorAll('input[name="play"]').forEach(function (r) { r.checked = Number(r.value) === m.play; });
     $("match-saves").value = m.saves || 0;
     $("match-conceded").value = m.conceded || 0;
+    shots = (m.shots || []).slice();
+    $("shot-name").value = ""; pick("shot-pos", ""); pick("shot-zone", ""); $("shot-msg").textContent = "";
+    renderShots();
     updateMatch();
     updateSavePct();
     $("saved").textContent = "";
@@ -590,8 +753,8 @@ form { display: grid; gap: 18px; }
   });
   $("match-steps").addEventListener("change", updateMatch);
   $("date").addEventListener("change", function () { if ($("date").value) fillForm($("date").value); });
-  $("form").addEventListener("submit", function (ev) {
-    ev.preventDefault();
+  // Salvează formularul; aruncările se salvează imediat, ca să nu se piardă nimic în timpul meciului
+  function persist() {
     var k = $("date").value || iso(today), mood = document.querySelector('input[name="mood"]:checked');
     data[k] = {
       pages: Math.max(0, parseInt($("pages").value, 10) || 0),
@@ -605,11 +768,16 @@ form { display: grid; gap: 18px; }
         done: Array.prototype.map.call(document.querySelectorAll("#match-steps input:checked"), function (c) { return c.dataset.step; }),
         play: play ? Number(play.value) : null,
         saves: Math.max(0, parseInt($("match-saves").value, 10) || 0),
-        conceded: Math.max(0, parseInt($("match-conceded").value, 10) || 0)
+        conceded: Math.max(0, parseInt($("match-conceded").value, 10) || 0),
+        shots: shots.slice()
       };
     }
     save(); renderAll();
-    var d = parse(k);
+    return k;
+  }
+  $("form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var k = persist(), d = parse(k);
     $("saved").textContent = k === iso(today) ? "Salvat. Bravo pentru azi!" : "Salvat pentru " + DAYS[dow(d)] + ", " + d.getDate() + " " + MONTHS[d.getMonth()] + ".";
   });
   $("clear-examples").addEventListener("click", function () {

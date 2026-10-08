@@ -21,6 +21,7 @@ Deschide `kaizen/index.html` direct în browser.
 
 - Notezi câte pagini ai citit, ce sport ai făcut (handbal, meci, alergare, sală etc.) și câte minute, și cum te simți, de la 1 la 5
 - La „Meci” apare un program special de meci: pregătire, încălzire, ce faci în timpul meciului și refacere, cu încălzire de portar, plus nota pentru cum ai jucat, paradele, golurile primite și procentajul de parade
+- Jurnal de aruncări pentru portar: jucătorul advers, postul, de unde a aruncat (6 m, 9 m, pătrundere, extremă, 7 m, contraatac) și rezultatul (paradă, gol, ratat), cu situația pe jucători și pe zone în timp real
 - Ținta de azi: media ultimelor 7 zile plus 1%
 - „Cum stai”: comparații pe săptămână, lună și an, cu săgeți în sus sau în jos
 - Un grafic cu fiecare zi și linia țintei Kaizen
