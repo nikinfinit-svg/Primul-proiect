@@ -403,22 +403,22 @@ const POSTS = {
   "pivot": "Pivot",
 };
 // La meci se mai pot nota și aruncările de la 7 m și contraatacurile
-const SHOT_POSTS = { ...POSTS, "7m": "7 metri", "contraatac": "Contraatac" };
+const SHOT_POSTS = { ...POSTS, "patrundere": "Pătrundere 6 m", "7m": "7 metri", "contraatac": "Contraatac" };
 const SHOT_CHIP = {
   "extrema-stanga": "Extremă st.", "extrema-dreapta": "Extremă dr.",
   "inter-stanga": "Inter st.", "centru": "Centru", "inter-dreapta": "Inter dr.",
-  "pivot": "Pivot", "7m": "7 m", "contraatac": "Contraatac",
+  "pivot": "Pivot", "patrundere": "Pătrundere 6 m", "7m": "7 m", "contraatac": "Contraatac",
 };
 const POST_ON = {
   "extrema-stanga": "Pe extrema stângă", "extrema-dreapta": "Pe extrema dreaptă",
   "inter-stanga": "De la interul stâng", "inter-dreapta": "De la interul drept",
-  "centru": "De la centru", "pivot": "De la pivot",
+  "centru": "De la centru", "pivot": "De la pivot", "patrundere": "Prin pătrundere (6 m)",
   "7m": "La 7 metri", "contraatac": "Pe contraatac",
 };
 // Procent de parade „normal” pentru un portar, pe fiecare tip de aruncare
 const EXPECTED = {
   "extrema-stanga": 35, "extrema-dreapta": 35, "inter-stanga": 40, "inter-dreapta": 40,
-  "centru": 40, "pivot": 25, "7m": 25, "contraatac": 20,
+  "centru": 40, "pivot": 25, "patrundere": 25, "7m": 25, "contraatac": 20,
 };
 
 const POST_ADVICE = {
@@ -468,6 +468,14 @@ const POST_ADVICE = {
       "Pivotul aruncă de foarte aproape, de la 6 m. Ieși spre el ca să-i micșorezi unghiul.",
       "Fă-te mare: brațele și picioarele deschise, ca un X. Așa acoperi cât mai multă poartă.",
       "Reacționează cât mai târziu. Pivotul te fentează des, așa că nu cădea primul.",
+    ],
+  },
+  "patrundere": {
+    stance: "Ieși spre el, rămâi în picioare și fă-te mare",
+    tips: [
+      "La pătrundere jucătorul trece de apărare și aruncă de la 6 m. Ieși un pas spre el ca să-i închizi unghiul.",
+      "Rămâi în picioare și fă-te mare, cu brațele și picioarele deschise. Nu cădea primul, pentru că te fentează ușor de aproape.",
+      "Urmărește mingea, nu corpul lui. Mulți aruncă pe lângă șold sau printre picioare când ies din pătrundere.",
     ],
   },
   "7m": {
@@ -1164,7 +1172,7 @@ function renderPlayer() {
 }
 
 function stanceSvg(post) {
-  const x = post === "pivot" || post === "contraatac";
+  const x = post === "pivot" || post === "contraatac" || post === "patrundere";
   return `<svg width="44" height="54" viewBox="0 0 44 54" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true">
     <circle cx="22" cy="8" r="5"/>
     <path d="M22 13v18"/>
