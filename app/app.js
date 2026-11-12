@@ -27,13 +27,17 @@ const MIN_TOTAL = 60;  // minute
 // ---------- stocare ----------
 function load() {
   try {
-    const d = JSON.parse(localStorage.getItem(STORE_KEY));
+    const d = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
     if (d && d.days && d.workouts) return { settings: {}, ...d };
   } catch (_) {}
   return { days: {}, workouts: {}, settings: { adductorHeavyOk: false } };
 }
 let db = load();
-function save() { localStorage.setItem(STORE_KEY, JSON.stringify(db)); }
+let storageOk = true;
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); storageOk = true; }
+  catch (_) { storageOk = false; }
+}
 
 // ---------- date (ora locală, nu UTC) ----------
 const pad = (n) => String(n).padStart(2, "0");
@@ -190,13 +194,18 @@ const totalMinutes = (blocks) => Math.round(blocks.reduce((s, b) => s + b.items.
 const $ = (sel) => document.querySelector(sel);
 let weekStart = mondayOf(new Date());
 
+// navigare între ecrane (fără adrese, ca să meargă și în pagini găzduite în cadru)
+let view = { name: "week" };
+function go(name, date) { view = { name, date }; route(); window.scrollTo(0, 0); }
 function route() {
-  const h = location.hash.slice(1);
-  if (h.startsWith("w/")) return renderWorkout(h.slice(2));
-  if (h === "setari") return renderSettings();
+  if (view.name === "workout") return renderWorkout(view.date);
+  if (view.name === "settings") return renderSettings();
   renderWeek();
 }
-window.addEventListener("hashchange", route);
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("[data-go]");
+  if (a) { e.preventDefault(); go(a.dataset.go); }
+});
 
 function renderWeek() {
   const today = ymd(new Date());
@@ -214,7 +223,7 @@ function renderWeek() {
   $("#app").innerHTML = `
     <header class="top">
       <h1>PORTAR<span>.</span></h1>
-      <a class="icon" href="#setari" aria-label="Setări">⚙</a>
+      <button class="icon" data-go="settings" aria-label="Setări">⚙</button>
     </header>
     <div class="weeknav">
       <button class="btn ghost" id="prev" aria-label="Săptămâna trecută">‹</button>
@@ -227,6 +236,15 @@ function renderWeek() {
   $("#next").onclick = () => { weekStart = addDays(weekStart, 7); renderWeek(); };
   const now = $("#now"); if (now) now.onclick = (ev) => { ev.preventDefault(); weekStart = mondayOf(new Date()); renderWeek(); };
   document.querySelectorAll(".day").forEach((b) => (b.onclick = () => openDay(b.dataset.date)));
+}
+
+// confirmare în pagină (unele browsere/cadre blochează confirm() și alert())
+function askConfirm(msg, okLabel, onOk, danger) {
+  const dlg = sheet(`<h2>Sigur?</h2><p>${esc(msg)}</p>
+    <button class="btn ${danger ? "danger" : "primary"} block" id="cok">${esc(okLabel)}</button>
+    <button class="btn ghost block" id="cno">Renunță</button>`);
+  $("#cno").onclick = () => dlg.close();
+  $("#cok").onclick = () => { dlg.close(); onOk(); };
 }
 
 // ---------- foaia unei zile ----------
@@ -252,7 +270,7 @@ function openDay(date) {
     <button class="btn ghost block" id="close">Închide</button>`);
   dlg.querySelectorAll("[data-st]").forEach((b) => (b.onclick = () => { db.days[date] = b.dataset.st; save(); renderWeek(); openDay(date); }));
   $("#close").onclick = () => dlg.close();
-  if ($("#open")) $("#open").onclick = () => { dlg.close(); location.hash = "w/" + date; };
+  if ($("#open")) $("#open").onclick = () => { dlg.close(); go("workout", date); };
   if ($("#train")) $("#train").onclick = () => askCondition(date);
 }
 
@@ -265,6 +283,7 @@ function askCondition(date) {
       <p class="label">Unde te doare? Exercițiile pentru zonele bifate dispar.</p>
       <div class="zones">${Object.entries(ZONES).map(([k, v]) => `<label class="zone"><input type="checkbox" value="${k}"><span>${v}</span></label>`).join("")}</div>
     </div>
+    <p id="zerr" class="err" hidden>Bifează cel puțin o zonă.</p>
     <button class="btn primary block" id="gen">Generează antrenamentul</button>
     <button class="btn ghost block" id="back">Înapoi</button>`);
   dlg.querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => {
@@ -275,19 +294,19 @@ function askCondition(date) {
   $("#back").onclick = () => openDay(date);
   $("#gen").onclick = () => {
     const zones = cond === "durere" ? [...dlg.querySelectorAll(".zones input:checked")].map((i) => i.value) : [];
-    if (cond === "durere" && !zones.length) { alert("Bifează cel puțin o zonă."); return; }
+    if (cond === "durere" && !zones.length) { $("#zerr").hidden = false; return; }
     db.workouts[date] = generate(date, cond, zones);
     db.days[date] = "sala";
     save();
     dlg.close();
-    location.hash = "w/" + date;
+    go("workout", date);
   };
 }
 
 // ---------- ecranul antrenamentului ----------
 function renderWorkout(date) {
   const w = db.workouts[date];
-  if (!w) { location.hash = ""; return; }
+  if (!w) { go("week"); return; }
   const total = totalMinutes(w.blocks);
   let n = 0;
   const blocks = w.blocks.filter((b) => b.items.length).map((b, bi) => `
@@ -297,7 +316,7 @@ function renderWorkout(date) {
     </section>`).join("");
   $("#app").innerHTML = `
     <header class="top">
-      <a class="icon" href="#" aria-label="Înapoi">‹</a>
+      <button class="icon" data-go="week" aria-label="Înapoi">‹</button>
       <h1 class="small">${dayName(date)}, ${fmtDate(date)}</h1>
       <span></span>
     </header>
@@ -320,14 +339,12 @@ function renderWorkout(date) {
     save();
   }));
   $("#finish").onclick = () => { w.done = !w.done; save(); renderWorkout(date); window.scrollTo(0, 0); };
-  $("#regen").onclick = () => {
-    if (!confirm("Generezi alt antrenament pentru ziua asta? Ce ai notat se pierde.")) return;
-    db.workouts[date] = generate(date, w.condition, w.painZones); save(); renderWorkout(date);
-  };
-  $("#del").onclick = () => {
-    if (!confirm("Ștergi antrenamentul?")) return;
-    delete db.workouts[date]; save(); location.hash = "";
-  };
+  $("#regen").onclick = () => askConfirm("Generezi alt antrenament pentru ziua asta? Ce ai notat se pierde.", "Generează din nou", () => {
+    db.workouts[date] = generate(date, w.condition, w.painZones); save(); renderWorkout(date); window.scrollTo(0, 0);
+  });
+  $("#del").onclick = () => askConfirm("Ștergi antrenamentul?", "Șterge", () => {
+    delete db.workouts[date]; save(); go("week");
+  }, true);
 }
 
 function exCard(it, bi, ii, n) {
@@ -355,7 +372,7 @@ function exCard(it, bi, ii, n) {
 // ---------- setări ----------
 function renderSettings() {
   $("#app").innerHTML = `
-    <header class="top"><a class="icon" href="#" aria-label="Înapoi">‹</a><h1 class="small">Setări</h1><span></span></header>
+    <header class="top"><button class="icon" data-go="week" aria-label="Înapoi">‹</button><h1 class="small">Setări</h1><span></span></header>
     <section class="card">
       <h3>Calendarul echipei</h3>
       <p class="muted small">Lipește programul lunii, câte o zi pe rând: <code>2026-12-03 meci</code> sau <code>03.12.2026 handbal</code>. Stări: liber, meci, handbal, sala. Zilele care nu apar rămân neschimbate.</p>
@@ -371,29 +388,39 @@ function renderSettings() {
     <section class="card">
       <h3>Copie de siguranță</h3>
       <p class="muted small">Datele stau doar pe telefonul ăsta. Salvează din când în când o copie.</p>
-      <button class="btn ghost block" id="exp">Descarcă copia (JSON)</button>
-      <label class="btn ghost block filebtn">Încarcă o copie<input type="file" id="upl" accept="application/json,.json" hidden></label>
+      <button class="btn ghost block" id="exp">Arată copia</button>
+      <div id="expbox" hidden>
+        <p class="muted small">Copiază textul și păstrează-l undeva (de exemplu, trimite-l ție pe mail sau în notițe).</p>
+        <textarea id="exptext" rows="5" readonly></textarea>
+        <button class="btn primary block" id="copy">Copiază</button>
+      </div>
+      <p class="label">Ca să refaci datele, lipește aici o copie salvată:</p>
+      <textarea id="imptext" rows="4" placeholder="Lipește copia aici"></textarea>
+      <button class="btn ghost block" id="restore">Încarcă copia</button>
+      <p id="bkres" class="muted small"></p>
     </section>
-    <p class="muted small center">Fără cont, fără server, fără costuri. Aplicația nu dă sfaturi medicale.</p>`;
+    <p class="muted small center">Fără cont, fără server, fără costuri. Aplicația nu dă sfaturi medicale.</p>
+    ${storageOk ? "" : `<p class="err center">Browserul nu permite salvarea datelor. Nu folosi o fereastră privată.</p>`}`;
   $("#heavy").onchange = (e) => { db.settings.adductorHeavyOk = e.target.checked; save(); };
   $("#imp").onclick = () => {
     const { count, bad } = importCalendar($("#cal").value);
     save();
     $("#impres").textContent = `Salvate: ${count} zile.` + (bad.length ? ` Rânduri neînțelese: ${bad.slice(0, 5).join(" | ")}` : "");
   };
-  $("#exp").onclick = () => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(db, null, 1)], { type: "application/json" }));
-    a.download = `portar-backup-${ymd(new Date())}.json`;
-    a.click();
+  $("#exp").onclick = () => { $("#exptext").value = JSON.stringify(db); $("#expbox").hidden = false; };
+  $("#copy").onclick = () => {
+    const t = $("#exptext");
+    const done = () => { $("#copy").textContent = "Copiat"; };
+    const fallback = () => { t.focus(); t.select(); $("#copy").textContent = "Textul e selectat: copiază-l"; };
+    try { navigator.clipboard.writeText(t.value).then(done, fallback); } catch (_) { fallback(); }
   };
-  $("#upl").onchange = async (e) => {
-    try {
-      const d = JSON.parse(await e.target.files[0].text());
-      if (!d.days || !d.workouts) throw new Error();
-      if (!confirm("Înlocuiești datele de pe telefon cu copia încărcată?")) return;
-      db = { settings: {}, ...d }; save(); alert("Copia a fost încărcată.");
-    } catch (_) { alert("Fișierul nu e o copie validă."); }
+  $("#restore").onclick = () => {
+    let d;
+    try { d = JSON.parse($("#imptext").value); if (!d || !d.days || !d.workouts) throw new Error(); }
+    catch (_) { $("#bkres").textContent = "Textul lipit nu e o copie validă. Copiază tot textul copiei, de la { până la }."; return; }
+    askConfirm("Înlocuiești datele de pe telefon cu copia lipită?", "Înlocuiește", () => {
+      db = { settings: {}, ...d }; save(); renderSettings(); $("#bkres").textContent = "Copia a fost încărcată.";
+    });
   };
 }
 
@@ -412,5 +439,7 @@ function importCalendar(text) {
   return { count, bad };
 }
 
-if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
+try {
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http") && !window.PORTAR_SINGLE) navigator.serviceWorker.register("sw.js").catch(() => {});
+} catch (_) {}
 route();

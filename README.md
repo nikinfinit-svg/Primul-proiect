@@ -13,10 +13,15 @@ Codul e în folderul `app/`:
 | `style.css` | tema întunecată cu accente verzi |
 | `sw.js`, `manifest.webmanifest`, `icon*` | instalare pe ecranul principal și funcționare offline |
 
-## Cum o pui pe telefon
-1. Publică folderul `app/` pe un hosting static, de exemplu GitHub Pages (Settings → Pages) sau Netlify Drop.
-2. Deschide linkul pe telefon. Pe iPhone: Safari → Partajează → „Adaugă pe ecranul principal”. Pe Android: Chrome → meniu → „Instalează aplicația”.
-3. Din Setări descarcă din când în când o copie de siguranță (JSON).
+## Cum o folosești pe telefon
+Aplicația e publicată ca pagină privată în contul Claude: https://claude.ai/artifact/FWovkMFepgfUPUjuUbgKqb
+
+1. Deschide linkul pe telefon, în browser (Safari sau Chrome), logat în contul Claude.
+2. Pune-l pe ecranul principal. Pe iPhone: Partajează → „Adaugă pe ecranul principal”. Pe Android: meniu → „Adaugă pe ecranul de pornire”.
+3. Folosește mereu același browser: datele se țin în browserul în care ai deschis pagina.
+4. Din Setări → „Arată copia” păstrează din când în când o copie a datelor.
+
+Pagina se reface din codul din `app/` cu `python3 tools/build-single.py portar.html`. Varianta din `app/` merge și singură pe orice hosting static (de exemplu GitHub Pages), cu funcționare offline.
 
 ## Calendarul lunar
 Trimiți poza calendarului în chat cu Claude și ceri programul în formatul de mai jos. Apoi îl lipești în aplicație, la Setări → Calendarul echipei:
